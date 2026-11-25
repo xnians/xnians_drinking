@@ -71,6 +71,19 @@
   .fmeta { font-size:12px; color:#9cc3d8; margin-top:3px; }
   .ghost-btn { width:100%; margin-top:14px; padding:13px; border:1px dashed #4aa8e0; background:#fff; color:#3d95d6; border-radius:16px; font-size:15px; cursor:pointer; }
 
+  /* 课表页 */
+  .now-bar { background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; border-radius:16px; padding:14px 16px; font-size:14px; margin-bottom:16px; }
+  .slot { display:flex; align-items:center; gap:12px; padding:13px 12px; border-radius:14px; border:1px solid #eef6fb; margin-bottom:10px; cursor:pointer; }
+  .slot.now { border-color:#4aa8e0; background:#eaf4fb; }
+  .slot .time { width:96px; font-size:13px; color:#5a8aa8; flex-shrink:0; }
+  .slot .sc { flex:1; font-size:15px; color:#3a6b8c; }
+  .slot .sc b { display:block; }
+  .slot .sc small { color:#9cc3d8; font-size:12px; }
+  .slot .go { font-size:13px; color:#3d95d6; flex-shrink:0; }
+  .slot .tip-line { display:none; width:100%; margin-top:8px; padding:10px 12px; background:#fff; border-radius:12px; font-size:14px; color:#3a6b8c; line-height:1.5; }
+  .slot.open .tip-line { display:block; }
+  .tip-text { font-size:14px; color:#5a8aa8; line-height:1.7; }
+
   .tabbar { position:absolute; left:0; right:0; bottom:0; display:flex; background:#fff; border-top:1px solid #e3f0f9; border-radius:0 0 36px 36px; }
   .tab { flex:1; text-align:center; padding:14px 0; font-size:13px; color:#8fb3c9; cursor:pointer; }
   .tab.active { color:#3d95d6; font-weight:bold; }
@@ -176,10 +189,28 @@
     </div>
   </div>
 
+  <!-- 课表联动页 -->
+  <div class="view" id="schedule">
+    <div class="chat-head">
+      <div class="name">🗓️ 课表联动提醒</div>
+      <div class="status">在对的时间，说对的话 · 不机械定时</div>
+    </div>
+    <div class="now-bar" id="nowBar">现在还没有到提醒节点，先看看下面的时段表～</div>
+    <div class="card">
+      <div class="card-title">⏰ 今日时段 · 点一下看当前人设的提醒</div>
+      <div id="slotListBox"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">💡 说明</div>
+      <div class="tip-text">演示版按固定时段展示；正式版导入真实课表后，会在你每节课、自习、运动的节点自动弹出对应场景的提醒，节假日 / 无课时自动降级为普通提示。</div>
+    </div>
+  </div>
+
   <div class="tabbar">
     <div class="tab active" data-view="home"><span class="ic">💧</span>打卡</div>
     <div class="tab" data-view="chat"><span class="ic">💬</span>陪伴</div>
     <div class="tab" data-view="social"><span class="ic">🏫</span>圈子</div>
+    <div class="tab" data-view="schedule"><span class="ic">🗓️</span>课表</div>
   </div>
 </div>
 
@@ -254,6 +285,7 @@ document.querySelectorAll('.role').forEach(el=>{
     el.classList.add('active'); role = el.dataset.role;
     document.getElementById('chatName').textContent = roleName[role];
     say();
+    renderSlots();
   };
 });
 document.getElementById('drink').onclick = ()=>{
@@ -297,6 +329,63 @@ document.getElementById('input').addEventListener('keydown',e=>{ if(e.key==='Ent
 document.querySelectorAll('.quick span').forEach(s=>{
   s.onclick = ()=>{ document.getElementById('input').value=s.dataset.q; send(); };
 });
+
+/* 课表联动：8 时段 × 三个人设代表话术（语料来自文案库） */
+const slots = [
+  { s:7, e:8, scene:'早八出门', sub:'宿舍 → 教室', lines:{
+    xueba:'出门前花10秒灌满水，比课间跑回宿舍取划算得多。',
+    tucao:'别等走到教学楼才想起没带水，顺手把水杯塞进书包。',
+    shuijing:'主人～把我放进书包侧袋，我陪你去教室呀🥤' }},
+  { s:9, e:10, scene:'课间10分钟', sub:'教室起身接水', lines:{
+    xueba:'起身接杯水，顺便活动一下，下节课专注力更稳。',
+    tucao:'坐一上午了，水杯是落宿舍了吗？站起来去接水。',
+    shuijing:'课间啦，给我续点水嘛，我想陪你上下一节课💧' }},
+  { s:10, e:12, scene:'自习/上课50分钟', sub:'专注后补水', lines:{
+    xueba:'专注50分钟记得补一口，水分够，记忆力才在线。',
+    tucao:'别硬撑到嗓子冒烟，先喝口水再继续卷。',
+    shuijing:'学累啦？喝一口水，我给你加油✨' }},
+  { s:12, e:13, scene:'食堂就餐', sub:'饭前温水', lines:{
+    xueba:'饭前先喝口温水，别用甜饮料代替正餐补水。',
+    tucao:'又想拿可乐下饭？先喝口白水，别糊弄肚子。',
+    shuijing:'吃饭前喝口温水，肠胃会舒服一点哦🍚' }},
+  { s:16, e:18, scene:'运动后', sub:'操场/体育课', lines:{
+    xueba:'运动后小口多次补水，别一次性猛灌。',
+    tucao:'大汗淋漓别对着瓶子猛灌，小口喝，温水最好。',
+    shuijing:'运动完慢慢喝，我陪你慢慢恢复呀💙' }},
+  { s:19, e:21, scene:'晚自习', sub:'傍晚到夜间', lines:{
+    xueba:'晚自习别靠咖啡硬顶，累了先补水+短暂休息。',
+    tucao:'别拿奶茶当水喝，晚自习也得喝真水。',
+    shuijing:'晚自习辛苦啦，喝口水我们继续✨' }},
+  { s:23, e:24, scene:'睡前', sub:'宿舍润喉', lines:{
+    xueba:'睡前小口润喉，顺手把明早的水杯备好。',
+    tucao:'别灌一大杯撑着睡，抿两口就行，明早的水先备好。',
+    shuijing:'晚安前喝一小口，我在桌上等你明天🥺' }},
+  { s:0, e:24, scene:'考试周全天', sub:'规律补水稳状态', lines:{
+    xueba:'考试周规律补水、睡够，状态稳定比突击更重要。',
+    tucao:'考前慌也没用，喝口水，一道一道刷，别熬废身体。',
+    shuijing:'考试加油！一口一口喝水，一题一题来💪' }}
+];
+
+function renderSlots(){
+  const box = document.getElementById('slotListBox');
+  const nowH = new Date().getHours();
+  box.innerHTML = '';
+  slots.forEach((it, i)=>{
+    const isNow = (it.s===0 && it.e===24) || (nowH>=it.s && nowH<it.e);
+    const row = document.createElement('div');
+    row.className = 'slot' + (isNow?' now':'');
+    row.innerHTML = `<div class="time">${it.s===0?'全天':String(it.s).padStart(2,'0')+':00–'+String(it.e).padStart(2,'0')+':00'}</div>
+      <div class="sc"><b>${it.scene}${isNow?' · 现在':''}</b><small>${it.sub}</small></div>
+      <div class="go">${isNow?'🔔':'查看'}</div>
+      <div class="tip-line">${it.lines[role]}</div>`;
+    row.onclick = ()=>{ row.classList.toggle('open'); row.querySelector('.tip-line').textContent = it.lines[role]; };
+    box.appendChild(row);
+  });
+  const bar = document.getElementById('nowBar');
+  const cur = slots.find(it=> (it.s===0&&it.e===24) || (nowH>=it.s&&nowH<it.e));
+  bar.textContent = cur ? `🔔 现在是「${cur.scene}」时段：${cur.lines[role]}` : '现在还没有到提醒节点，先看看下面的时段表～';
+}
+renderSlots();
 
 /* Tab 切换 */
 document.querySelectorAll('.tab').forEach(t=>{

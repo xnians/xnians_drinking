@@ -2,7 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/chat/chat",
-    "pages/social/social"
+    "pages/social/social",
+    "pages/schedule/schedule"
   ],
   "window": {
     "navigationBarBackgroundColor": "#4aa8e0",
@@ -17,7 +18,8 @@
     "list": [
       { "pagePath": "pages/index/index", "text": "打卡" },
       { "pagePath": "pages/chat/chat", "text": "陪伴" },
-      { "pagePath": "pages/social/social", "text": "圈子" }
+      { "pagePath": "pages/social/social", "text": "圈子" },
+      { "pagePath": "pages/schedule/schedule", "text": "课表" }
     ]
   },
   "style": "v2",

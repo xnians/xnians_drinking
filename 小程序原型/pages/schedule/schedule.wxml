@@ -1,0 +1,23 @@
+<!-- pages/schedule/schedule.wxml —— 课表联动提醒页 -->
+<view class="head">
+  <view class="name">🗓️ 课表联动提醒</view>
+  <view class="status">在对的时间，说对的话 · 不机械定时</view>
+</view>
+
+<view class="now-bar">{{nowText}}</view>
+
+<view class="card">
+  <view class="card-title">⏰ 今日时段 · 点一下看当前人设的提醒</view>
+  <view class="slot {{item.now?'now':''}} {{item.open?'open':''}}"
+        wx:for="{{slots}}" wx:key="scene" data-index="{{index}}" bindtap="toggle">
+    <view class="time">{{item.range}}</view>
+    <view class="sc"><b>{{item.scene}}{{item.now?' · 现在':''}}</b><small>{{item.sub}}</small></view>
+    <view class="go">{{item.now?'🔔':'查看'}}</view>
+    <view class="tip-line">{{item.lines[role]}}</view>
+  </view>
+</view>
+
+<view class="card">
+  <view class="card-title">💡 说明</view>
+  <view class="tip-text">演示版按固定时段展示；正式版导入真实课表后，会在你每节课、自习、运动的节点自动弹出对应场景的提醒，节假日 / 无课时自动降级为普通提示。</view>
+</view>

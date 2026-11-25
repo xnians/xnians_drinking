@@ -54,7 +54,9 @@ Page({
   },
 
   switchRole(e) {
-    this.setData({ role: e.currentTarget.dataset.key });
+    const role = e.currentTarget.dataset.key;
+    this.setData({ role });
+    wx.setStorageSync('role', role); // 同步给陪伴聊天页
     this.say();
   },
 

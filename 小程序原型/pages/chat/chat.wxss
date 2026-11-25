@@ -1,0 +1,16 @@
+/* pages/chat/chat.wxss */
+.chat-head { text-align:center; margin:16rpx 0 24rpx; }
+.chat-head .name { font-size:36rpx; font-weight:bold; color:#2b7bb8; }
+.chat-head .status { font-size:24rpx; color:#7aa9c7; margin-top:6rpx; }
+
+.msgs { height:760rpx; display:flex; flex-direction:column; gap:24rpx; padding:12rpx 8rpx; }
+.msg { max-width:78%; padding:22rpx 28rpx; border-radius:36rpx; font-size:30rpx; line-height:1.5; }
+.msg.me { align-self:flex-end; background:#4aa8e0; color:#fff; border-bottom-right-radius:12rpx; }
+.msg.ai { align-self:flex-start; background:#fff; color:#3a6b8c; border-bottom-left-radius:12rpx; box-shadow:0 6rpx 20rpx rgba(74,168,224,.12); }
+
+.quick { display:flex; flex-wrap:wrap; gap:16rpx; margin:16rpx 0; }
+.q { font-size:26rpx; color:#4aa8e0; background:#fff; border:1rpx solid #cfe6f5; border-radius:28rpx; padding:12rpx 24rpx; }
+
+.chat-input { display:flex; gap:16rpx; margin-top:16rpx; }
+.input { flex:1; padding:24rpx 32rpx; border-radius:36rpx; border:1rpx solid #cfe6f5; background:#fff; font-size:30rpx; }
+.send { padding:0 40rpx; height:88rpx; line-height:88rpx; border-radius:36rpx; background:#3d95d6; color:#fff; font-size:30rpx; font-weight:bold; }

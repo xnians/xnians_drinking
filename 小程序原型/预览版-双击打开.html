@@ -7,142 +7,240 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
   body { background:#eaf4fb; display:flex; justify-content:center; padding:24px 12px; }
-  /* 手机框 */
-  .phone { width:390px; max-width:100%; background:linear-gradient(180deg,#dff1ff 0%,#f4fbff 60%); border-radius:36px; padding:22px 18px 30px; box-shadow:0 12px 40px rgba(74,168,224,.25); }
+  .phone { width:390px; max-width:100%; background:linear-gradient(180deg,#dff1ff 0%,#f4fbff 60%); border-radius:36px; padding:22px 18px 90px; box-shadow:0 12px 40px rgba(74,168,224,.25); min-height:720px; position:relative; }
   .top { text-align:center; }
   .top h1 { font-size:24px; color:#2b7bb8; letter-spacing:2px; }
   .top .date { font-size:13px; color:#7aa9c7; margin-top:4px; }
-  /* 人设切换 */
+
   .roles { display:flex; gap:8px; margin:18px 0 6px; }
   .role { flex:1; text-align:center; padding:9px 4px; border-radius:14px; background:#fff; font-size:14px; color:#5a8aa8; cursor:pointer; border:2px solid transparent; transition:.2s; }
   .role.active { background:#4aa8e0; color:#fff; border-color:#4aa8e0; font-weight:bold; }
-  /* 进度环 */
+
   .ring-wrap { display:flex; justify-content:center; margin:18px 0 8px; }
   svg { transform:rotate(-90deg); }
   .ring-bg { fill:none; stroke:#d6ecf8; stroke-width:14; }
   .ring-fg { fill:none; stroke:#4aa8e0; stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset .6s ease; }
-  .ring-text { position:absolute; text-align:center; }
   .ring-box { position:relative; width:200px; height:200px; }
-  .ring-text { top:50%; left:50%; transform:translate(-50%,-50%); }
+  .ring-text { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
   .ring-text .num { font-size:40px; font-weight:bold; color:#2b7bb8; }
   .ring-text .sub { font-size:14px; color:#7aa9c7; }
-  /* 气泡 */
+
   .bubble { background:#fff; border-radius:18px; padding:14px 16px; margin:14px 0; font-size:15px; color:#3a6b8c; line-height:1.6; box-shadow:0 4px 14px rgba(74,168,224,.12); min-height:56px; }
   .bubble .who { font-size:12px; color:#4aa8e0; margin-bottom:4px; font-weight:bold; }
-  /* 按钮 */
   .btn { width:100%; padding:16px; border:none; border-radius:20px; background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 8px 18px rgba(61,149,214,.35); transition:.15s; }
   .btn:active { transform:scale(.97); }
-  /* 记录 */
   .log { margin-top:18px; }
   .log h3 { font-size:14px; color:#5a8aa8; margin-bottom:8px; }
   .log-item { background:#fff; border-radius:12px; padding:10px 14px; margin-bottom:8px; font-size:14px; color:#3a6b8c; display:flex; justify-content:space-between; }
   .empty { font-size:13px; color:#9cc3d8; text-align:center; padding:10px; }
   .done { text-align:center; color:#2b9e6b; font-weight:bold; margin-top:8px; font-size:15px; }
+
+  /* 聊天页 */
+  .chat-head { text-align:center; margin:6px 0 12px; }
+  .chat-head .name { font-size:18px; font-weight:bold; color:#2b7bb8; }
+  .chat-head .status { font-size:12px; color:#7aa9c7; }
+  .msgs { height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:6px 2px; }
+  .msg { max-width:78%; padding:11px 14px; border-radius:18px; font-size:15px; line-height:1.5; }
+  .msg.me { align-self:flex-end; background:#4aa8e0; color:#fff; border-bottom-right-radius:6px; }
+  .msg.ai { align-self:flex-start; background:#fff; color:#3a6b8c; border-bottom-left-radius:6px; box-shadow:0 3px 10px rgba(74,168,224,.12); }
+  .chat-input { display:flex; gap:8px; margin-top:12px; }
+  .chat-input input { flex:1; padding:13px 16px; border-radius:20px; border:1px solid #cfe6f5; background:#fff; font-size:15px; outline:none; }
+  .chat-input button { padding:13px 20px; border:none; border-radius:20px; background:#3d95d6; color:#fff; font-size:15px; font-weight:bold; cursor:pointer; }
+  .quick { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .quick span { font-size:13px; color:#4aa8e0; background:#fff; border:1px solid #cfe6f5; border-radius:14px; padding:7px 12px; cursor:pointer; }
+
+  .tabbar { position:absolute; left:0; right:0; bottom:0; display:flex; background:#fff; border-top:1px solid #e3f0f9; border-radius:0 0 36px 36px; }
+  .tab { flex:1; text-align:center; padding:14px 0; font-size:13px; color:#8fb3c9; cursor:pointer; }
+  .tab.active { color:#3d95d6; font-weight:bold; }
+  .tab .ic { font-size:20px; display:block; }
+  .view { display:none; }
+  .view.show { display:block; }
 </style>
 </head>
 <body>
 <div class="phone">
-  <div class="top">
-    <h1>💧 咕咚校园</h1>
-    <div class="date" id="date"></div>
-  </div>
 
-  <div class="roles">
-    <div class="role active" data-role="xueba">学霸同桌</div>
-    <div class="role" data-role="tucao">吐槽搭子</div>
-    <div class="role" data-role="shuijing">软萌水精灵</div>
-  </div>
-
-  <div class="ring-wrap">
-    <div class="ring-box">
-      <svg width="200" height="200">
-        <circle class="ring-bg" cx="100" cy="100" r="86"></circle>
-        <circle class="ring-fg" id="ring" cx="100" cy="100" r="86" stroke-dasharray="540" stroke-dashoffset="540"></circle>
-      </svg>
-      <div class="ring-text">
-        <div class="num" id="cups">0</div>
-        <div class="sub">/ 6 杯</div>
+  <!-- 打卡首页 -->
+  <div class="view show" id="home">
+    <div class="top">
+      <h1>💧 咕咚校园</h1>
+      <div class="date" id="date"></div>
+    </div>
+    <div class="roles">
+      <div class="role active" data-role="xueba">学霸同桌</div>
+      <div class="role" data-role="tucao">吐槽搭子</div>
+      <div class="role" data-role="shuijing">软萌水精灵</div>
+    </div>
+    <div class="ring-wrap">
+      <div class="ring-box">
+        <svg width="200" height="200">
+          <circle class="ring-bg" cx="100" cy="100" r="86"></circle>
+          <circle class="ring-fg" id="ring" cx="100" cy="100" r="86" stroke-dasharray="540" stroke-dashoffset="540"></circle>
+        </svg>
+        <div class="ring-text"><div class="num" id="cups">0</div><div class="sub">/ 6 杯</div></div>
       </div>
+    </div>
+    <div class="bubble">
+      <div class="who" id="who">学霸同桌</div>
+      <div id="talk">早八先喝一杯温水，大脑开机更快。</div>
+    </div>
+    <button class="btn" id="drink">我喝了一杯 💧</button>
+    <div class="done" id="done" style="display:none">🎉 今日目标完成，太棒了！</div>
+    <div class="log">
+      <h3>今日记录</h3>
+      <div id="loglist"><div class="empty">还没有记录，点上面按钮打卡吧</div></div>
     </div>
   </div>
 
-  <div class="bubble">
-    <div class="who" id="who">学霸同桌</div>
-    <div id="talk">早八先喝一杯温水，大脑开机更快。</div>
+  <!-- AI 陪伴聊天页 -->
+  <div class="view" id="chat">
+    <div class="chat-head">
+      <div class="name" id="chatName">学霸同桌</div>
+      <div class="status">在线 · 随时陪你聊聊</div>
+    </div>
+    <div class="msgs" id="msgs">
+      <div class="msg ai" id="welcome">嗨，我是学霸同桌，今天过得怎么样？累了、烦了都可以跟我说。</div>
+    </div>
+    <div class="quick">
+      <span data-q="我好累啊">我好累啊</span>
+      <span data-q="考试好焦虑">考试好焦虑</span>
+      <span data-q="今天不开心">今天不开心</span>
+      <span data-q="谢谢">谢谢</span>
+    </div>
+    <div class="chat-input">
+      <input id="input" placeholder="和TA说点什么…" />
+      <button id="send">发送</button>
+    </div>
   </div>
 
-  <button class="btn" id="drink">我喝了一杯 💧</button>
-  <div class="done" id="done" style="display:none">🎉 今日目标完成，太棒了！</div>
-
-  <div class="log">
-    <h3>今日记录</h3>
-    <div id="loglist"><div class="empty">还没有记录，点上面按钮打卡吧</div></div>
+  <div class="tabbar">
+    <div class="tab active" data-view="home"><span class="ic">💧</span>打卡</div>
+    <div class="tab" data-view="chat"><span class="ic">💬</span>陪伴</div>
   </div>
 </div>
 
 <script>
 const GOAL = 6;
-let cups = 0;
-let role = 'xueba';
-
-const talks = {
-  xueba: [
-    '早八先喝一杯温水，大脑开机更快。',
-    '自习50分钟记得补一口，专注力会回来。',
-    '今天已经喝了{cups}杯，保持节奏，别断档。',
-    '水分充足，记忆力和状态都会在线。'
-  ],
-  tucao: [
-    '又想靠奶茶续命？先把这杯温水喝了再说。',
-    '你都坐一上午了，水杯是落宿舍了吗？',
-    '别等嗓子冒烟才想起来喝水，那是透支。',
-    '{cups}杯了，再坚持一下，别半途而废啊。'
-  ],
-  shuijing: [
-    '咕嘟咕嘟～喝一口水，我就变圆一点点🥺',
-    '宝宝，水杯就在手边，抬抬手就喝啦💧',
-    '已经{cups}杯啦，你对我真好，么么哒✨',
-    '不喝水我会蔫掉的，快喂我一口嘛～'
-  ]
-};
+let cups = 0, role = 'xueba';
 const roleName = { xueba:'学霸同桌', tucao:'吐槽搭子', shuijing:'软萌水精灵' };
 
-const ring = document.getElementById('ring');
-const C = 540;
+const talks = {
+  xueba: ['早八先喝一杯温水，大脑开机更快。','自习50分钟记得补一口，专注力会回来。','今天已经喝了{cups}杯，保持节奏，别断档。','水分充足，记忆力和状态都会在线。'],
+  tucao: ['又想靠奶茶续命？先把这杯温水喝了再说。','你都坐一上午了，水杯是落宿舍了吗？','别等嗓子冒烟才想起来喝水，那是透支。','{cups}杯了，再坚持一下，别半途而废啊。'],
+  shuijing: ['咕嘟咕嘟～喝一口水，我就变圆一点点🥺','宝宝，水杯就在手边，抬抬手就喝啦💧','已经{cups}杯啦，你对我真好，么么哒✨','不喝水我会蔫掉的，快喂我一口嘛～']
+};
+
+/* 本地人设回复库：演示版用规则匹配，真实版接大模型 API */
+const reply = {
+  xueba: {
+    tired: ['累了就先停下来喝口水，把任务拆成小块，完成一块休息一下。','疲劳时硬撑效率很低，补水+短暂休息，比咬牙扛更划算。'],
+    exam: ['考试焦虑很正常，先喝口水深呼吸，把要背的内容列成清单，一项一项来。','你已经准备了很久，现在稳住节奏，水喝够、觉睡够，发挥才稳。'],
+    sad: ['我在听。情绪不好的时候先照顾身体，喝口水，慢慢说，不用急。','难过是暂时的，你愿意说出来就已经很勇敢了。'],
+    hungry: ['别用零食顶，先喝口温水，正餐按时吃，身体才扛得住。'],
+    thanks: ['不客气，照顾好自己比什么都重要。'],
+    hello: ['你好呀，今天有什么想聊的？'],
+    fallback: ['嗯，我在听。不管什么事，先喝口水，我们慢慢理一理。','收到。愿意多说说吗？我陪你一起想办法。']
+  },
+  tucao: {
+    tired: ['累就对了，谁让你硬撑。先喝口水歇会儿，别把自己熬废了。','又累又不喝水，你这是跟自己过不去？坐下，喝水。'],
+    exam: ['考前慌也没用，书又不会因为你焦虑自己跑进脑子。喝口水，一道一道刷。','别自己吓自己，你准备的够多了，先喝水，稳住。'],
+    sad: ['咋了这是？先喝口水，天塌不下来，跟我说说。','行了行了，别憋着，喝口水，吐槽出来我听着。'],
+    hungry: ['又想吃零食？先喝口白水，别拿甜的糊弄肚子。'],
+    thanks: ['客气啥，记得喝水就行。'],
+    hello: ['哟，来了，今天又想让我念叨你啥？'],
+    fallback: ['行，我听见了。先喝口水，别一个人钻牛角尖。','嗯，说下去，我耳朵在。']
+  },
+  shuijing: {
+    tired: ['辛苦啦抱抱🫂 先喝口水，歇一小会儿，我陪着你呀。','累了就靠一靠，喝口水，我们慢慢再来💙'],
+    exam: ['别紧张别紧张，喝口水深呼吸，你可以的💪 我一直在桌边陪你。','考试加油！把害怕先放一放，一口一口喝水，一题一题来✨'],
+    sad: ['呜呜，不开心就告诉我呀，我陪着你🫂 先喝口水，我一直在。','抱抱你，难过也没关系，我不会走的，喝口水好不好🥺'],
+    hungry: ['肚子饿啦？先喝口温水，别吃太多甜的哦🍚'],
+    thanks: ['么么哒，不用谢，我一直都在✨'],
+    hello: ['你来啦～我等你好久啦🥰'],
+    fallback: ['嗯嗯我在听呀，先喝口水，慢慢跟我说💧','我陪着你呢，想说什么都可以，先喝一口水✨']
+  }
+};
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function classify(text){
+  if(/累|困|疲惫|想睡|撑不住/.test(text)) return 'tired';
+  if(/考试|考|复习|背书|题|考研|期末|焦虑|紧张/.test(text)) return 'exam';
+  if(/不开心|难过|烦|emo|哭|伤心|郁闷|委屈/.test(text)) return 'sad';
+  if(/饿|肚子/.test(text)) return 'hungry';
+  if(/谢谢|感谢/.test(text)) return 'thanks';
+  if(/你好|在吗|在不在|hi|hello/i.test(text)) return 'hello';
+  return 'fallback';
+}
+
+/* 打卡逻辑 */
+const ring = document.getElementById('ring'), C = 540;
 function render(){
   document.getElementById('cups').textContent = cups;
-  ring.style.strokeDashoffset = C - (C * Math.min(cups,GOAL)/GOAL);
-  document.getElementById('done').style.display = cups>=GOAL ? 'block':'none';
+  ring.style.strokeDashoffset = C - (C*Math.min(cups,GOAL)/GOAL);
+  document.getElementById('done').style.display = cups>=GOAL?'block':'none';
 }
 function say(){
-  const arr = talks[role];
-  let t = arr[Math.floor(Math.random()*arr.length)];
-  t = t.replace('{cups}', cups);
+  let t = pick(talks[role]).replace('{cups}',cups);
   document.getElementById('who').textContent = roleName[role];
   document.getElementById('talk').textContent = t;
 }
 document.querySelectorAll('.role').forEach(el=>{
   el.onclick = ()=>{
     document.querySelectorAll('.role').forEach(r=>r.classList.remove('active'));
-    el.classList.add('active');
-    role = el.dataset.role;
+    el.classList.add('active'); role = el.dataset.role;
+    document.getElementById('chatName').textContent = roleName[role];
     say();
   };
 });
 document.getElementById('drink').onclick = ()=>{
   if(cups>=GOAL){ say(); return; }
   cups++;
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
+  const n = new Date(), hh=String(n.getHours()).padStart(2,'0'), mm=String(n.getMinutes()).padStart(2,'0');
   const list = document.getElementById('loglist');
   if(list.querySelector('.empty')) list.innerHTML='';
   const item = document.createElement('div');
   item.className='log-item';
-  item.innerHTML = `<span>💧 第 ${cups} 杯</span><span>${hh}:${mm}</span>`;
+  item.innerHTML=`<span>💧 第 ${cups} 杯</span><span>${hh}:${mm}</span>`;
   list.prepend(item);
   render(); say();
 };
+
+/* 聊天逻辑 */
+const msgs = document.getElementById('msgs');
+function addMsg(text, who){
+  const d = document.createElement('div');
+  d.className = 'msg '+(who==='me'?'me':'ai');
+  d.textContent = text;
+  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+}
+function aiReply(text){
+  const cat = classify(text);
+  const pool = reply[role][cat] || reply[role].fallback;
+  setTimeout(()=> addMsg(pick(pool),'ai'), 500);
+}
+function send(){
+  const v = document.getElementById('input').value.trim();
+  if(!v) return;
+  addMsg(v,'me');
+  document.getElementById('input').value='';
+  aiReply(v);
+}
+document.getElementById('send').onclick = send;
+document.getElementById('input').addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
+document.querySelectorAll('.quick span').forEach(s=>{
+  s.onclick = ()=>{ document.getElementById('input').value=s.dataset.q; send(); };
+});
+
+/* Tab 切换 */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('show'));
+    document.getElementById(t.dataset.view).classList.add('show');
+  };
+});
+
 document.getElementById('date').textContent = new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
 render(); say();
 </script>

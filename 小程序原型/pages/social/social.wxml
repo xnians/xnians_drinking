@@ -1,0 +1,37 @@
+<!-- pages/social/social.wxml —— 校园社交页：排行榜 / 勋章墙 / 圈子动态 -->
+<view class="head">
+  <view class="name">🏫 班级补水圈</view>
+  <view class="status">本周 · 和搭子一起坚持</view>
+</view>
+
+<view class="card">
+  <view class="card-title">📊 本周班级补水榜</view>
+  <view class="rank-row" wx:for="{{rank}}" wx:key="name" class="{{item.me?'me':''}}">
+    <text class="medal">{{item.medal}}</text>
+    <text class="rname">{{item.name}}</text>
+    <text class="rcnt">{{item.cups}} 杯 · 连{{item.streak}}天</text>
+  </view>
+  <view class="rank-tip">前面那位别让他跑太远啊，再补两杯就追上去 💪</view>
+</view>
+
+<view class="card">
+  <view class="card-title">🏅 我的勋章墙</view>
+  <view class="medals">
+    <view class="medal-item {{m.got?'got':''}}" wx:for="{{medals}}" wx:key="name">
+      <text class="mi">{{m.icon}}</text>
+      <text>{{m.name}}</text>
+      <small>{{m.desc}}</small>
+    </view>
+  </view>
+</view>
+
+<view class="card">
+  <view class="card-title">💬 圈子动态</view>
+  <view class="feed">
+    <view class="feed-row" wx:for="{{feed}}" wx:key="name">
+      <view class="avatar {{item.me?'me-av':''}}">{{item.initial}}</view>
+      <view><b>{{item.name}}</b> {{item.text}}<view class="fmeta">{{item.time}} · 👍 {{item.like}}</view></view>
+    </view>
+  </view>
+  <button class="ghost-btn" bindtap="poke">🔔 提醒搭子喝水</button>
+</view>

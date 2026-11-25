@@ -1,7 +1,8 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/chat/chat"
+    "pages/chat/chat",
+    "pages/social/social"
   ],
   "window": {
     "navigationBarBackgroundColor": "#4aa8e0",
@@ -15,7 +16,8 @@
     "backgroundColor": "#ffffff",
     "list": [
       { "pagePath": "pages/index/index", "text": "打卡" },
-      { "pagePath": "pages/chat/chat", "text": "陪伴" }
+      { "pagePath": "pages/chat/chat", "text": "陪伴" },
+      { "pagePath": "pages/social/social", "text": "圈子" }
     ]
   },
   "style": "v2",

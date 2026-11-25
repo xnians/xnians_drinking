@@ -49,6 +49,28 @@
   .quick { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   .quick span { font-size:13px; color:#4aa8e0; background:#fff; border:1px solid #cfe6f5; border-radius:14px; padding:7px 12px; cursor:pointer; }
 
+  /* 社交页 */
+  .card { background:#fff; border-radius:18px; padding:16px; margin-bottom:16px; box-shadow:0 4px 14px rgba(74,168,224,.12); }
+  .card-title { font-size:16px; font-weight:bold; color:#2b7bb8; margin-bottom:12px; }
+  .rank-row { display:flex; align-items:center; gap:12px; padding:10px 6px; border-bottom:1px solid #eef6fb; font-size:15px; color:#3a6b8c; }
+  .rank-row:last-of-type { border-bottom:none; }
+  .rank-row.me { background:#eaf4fb; border-radius:12px; font-weight:bold; color:#2b7bb8; }
+  .medal { width:28px; text-align:center; }
+  .rname { flex:1; }
+  .rcnt { font-size:13px; color:#7aa9c7; }
+  .rank-tip { font-size:13px; color:#5a8aa8; margin-top:10px; padding:8px 10px; background:#f4fbff; border-radius:10px; }
+  .medals { display:flex; flex-wrap:wrap; gap:12px; }
+  .medal-item { width:31%; text-align:center; padding:14px 6px; border-radius:14px; background:#f4fbff; font-size:13px; color:#9cc3d8; }
+  .medal-item .mi { font-size:30px; display:block; margin-bottom:6px; }
+  .medal-item small { display:block; font-size:11px; margin-top:4px; }
+  .medal-item.got { background:#eaf4fb; color:#2b7bb8; }
+  .feed { display:flex; flex-direction:column; gap:14px; }
+  .feed-row { display:flex; gap:12px; font-size:14px; color:#3a6b8c; line-height:1.5; }
+  .avatar { width:38px; height:38px; border-radius:50%; background:#cfe6f5; color:#2b7bb8; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0; }
+  .avatar.me-av { background:#4aa8e0; color:#fff; }
+  .fmeta { font-size:12px; color:#9cc3d8; margin-top:3px; }
+  .ghost-btn { width:100%; margin-top:14px; padding:13px; border:1px dashed #4aa8e0; background:#fff; color:#3d95d6; border-radius:16px; font-size:15px; cursor:pointer; }
+
   .tabbar { position:absolute; left:0; right:0; bottom:0; display:flex; background:#fff; border-top:1px solid #e3f0f9; border-radius:0 0 36px 36px; }
   .tab { flex:1; text-align:center; padding:14px 0; font-size:13px; color:#8fb3c9; cursor:pointer; }
   .tab.active { color:#3d95d6; font-weight:bold; }
@@ -113,9 +135,51 @@
     </div>
   </div>
 
+  <!-- 校园社交页 -->
+  <div class="view" id="social">
+    <div class="chat-head">
+      <div class="name">🏫 班级补水圈</div>
+      <div class="status">本周 · 和搭子一起坚持</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 本周班级补水榜</div>
+      <div class="rank-row"><span class="medal">🥇</span><span class="rname">林同学</span><span class="rcnt">32 杯 · 连7天</span></div>
+      <div class="rank-row"><span class="medal">🥈</span><span class="rname">陈同学</span><span class="rcnt">29 杯 · 连6天</span></div>
+      <div class="rank-row me"><span class="medal">🥉</span><span class="rname">我</span><span class="rcnt">24 杯 · 连4天</span></div>
+      <div class="rank-row"><span class="medal">4</span><span class="rname">王同学</span><span class="rcnt">21 杯 · 连3天</span></div>
+      <div class="rank-row"><span class="medal">5</span><span class="rname">李同学</span><span class="rcnt">18 杯 · 连2天</span></div>
+      <div class="rank-tip">前面那位别让他跑太远啊，再补两杯就追上去 💪</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏅 我的勋章墙</div>
+      <div class="medals">
+        <div class="medal-item got"><span class="mi">🥤</span><span>初来乍到</span><small>打卡第1天</small></div>
+        <div class="medal-item got"><span class="mi">🔥</span><span>三日坚持</span><small>连续3天</small></div>
+        <div class="medal-item got"><span class="mi">💧</span><span>补水达人</span><small>单日满6杯</small></div>
+        <div class="medal-item"><span class="mi">🏅</span><span>七日连续</span><small>差3天解锁</small></div>
+        <div class="medal-item"><span class="mi">🌙</span><span>晚自习之星</span><small>未解锁</small></div>
+        <div class="medal-item"><span class="mi">🎓</span><span>考试周稳水</span><small>未解锁</small></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💬 圈子动态</div>
+      <div class="feed">
+        <div class="feed-row"><span class="avatar">林</span><div><b>林同学</b> 连续第7天达标，"稳住就是赢"<div class="fmeta">10分钟前 · 👍 12</div></div></div>
+        <div class="feed-row"><span class="avatar me-av">我</span><div><b>我</b> 今天第3杯，继续加油<div class="fmeta">半小时前 · 👍 5</div></div></div>
+        <div class="feed-row"><span class="avatar">陈</span><div><b>陈同学</b> 运动后补了一杯，别猛灌哦<div class="fmeta">1小时前 · 👍 8</div></div></div>
+        <div class="feed-row"><span class="avatar">王</span><div><b>王同学</b> 被搭子催来喝水了 😂<div class="fmeta">2小时前 · 👍 21</div></div></div>
+      </div>
+      <button class="ghost-btn" id="poke">🔔 提醒搭子喝水</button>
+    </div>
+  </div>
+
   <div class="tabbar">
     <div class="tab active" data-view="home"><span class="ic">💧</span>打卡</div>
     <div class="tab" data-view="chat"><span class="ic">💬</span>陪伴</div>
+    <div class="tab" data-view="social"><span class="ic">🏫</span>圈子</div>
   </div>
 </div>
 
@@ -226,6 +290,9 @@ function send(){
   aiReply(v);
 }
 document.getElementById('send').onclick = send;
+document.getElementById('poke').onclick = ()=>{
+  alert('已轻轻戳了一下你的搭子："水还没喝哦，来一杯～"（演示版，正式版会发消息提醒）');
+};
 document.getElementById('input').addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 document.querySelectorAll('.quick span').forEach(s=>{
   s.onclick = ()=>{ document.getElementById('input').value=s.dataset.q; send(); };

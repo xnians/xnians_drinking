@@ -1,0 +1,5 @@
+/* app.wxss —— 全局样式 */
+page {
+  background: linear-gradient(180deg, #dff1ff 0%, #f4fbff 60%);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}

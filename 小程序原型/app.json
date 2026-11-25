@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#4aa8e0",
+    "navigationBarTitleText": "咕咚校园",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#eaf4fb"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

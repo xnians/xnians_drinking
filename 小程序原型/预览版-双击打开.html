@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>咕咚校园 · 演示版</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+  body { background:#eaf4fb; display:flex; justify-content:center; padding:24px 12px; }
+  /* 手机框 */
+  .phone { width:390px; max-width:100%; background:linear-gradient(180deg,#dff1ff 0%,#f4fbff 60%); border-radius:36px; padding:22px 18px 30px; box-shadow:0 12px 40px rgba(74,168,224,.25); }
+  .top { text-align:center; }
+  .top h1 { font-size:24px; color:#2b7bb8; letter-spacing:2px; }
+  .top .date { font-size:13px; color:#7aa9c7; margin-top:4px; }
+  /* 人设切换 */
+  .roles { display:flex; gap:8px; margin:18px 0 6px; }
+  .role { flex:1; text-align:center; padding:9px 4px; border-radius:14px; background:#fff; font-size:14px; color:#5a8aa8; cursor:pointer; border:2px solid transparent; transition:.2s; }
+  .role.active { background:#4aa8e0; color:#fff; border-color:#4aa8e0; font-weight:bold; }
+  /* 进度环 */
+  .ring-wrap { display:flex; justify-content:center; margin:18px 0 8px; }
+  svg { transform:rotate(-90deg); }
+  .ring-bg { fill:none; stroke:#d6ecf8; stroke-width:14; }
+  .ring-fg { fill:none; stroke:#4aa8e0; stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset .6s ease; }
+  .ring-text { position:absolute; text-align:center; }
+  .ring-box { position:relative; width:200px; height:200px; }
+  .ring-text { top:50%; left:50%; transform:translate(-50%,-50%); }
+  .ring-text .num { font-size:40px; font-weight:bold; color:#2b7bb8; }
+  .ring-text .sub { font-size:14px; color:#7aa9c7; }
+  /* 气泡 */
+  .bubble { background:#fff; border-radius:18px; padding:14px 16px; margin:14px 0; font-size:15px; color:#3a6b8c; line-height:1.6; box-shadow:0 4px 14px rgba(74,168,224,.12); min-height:56px; }
+  .bubble .who { font-size:12px; color:#4aa8e0; margin-bottom:4px; font-weight:bold; }
+  /* 按钮 */
+  .btn { width:100%; padding:16px; border:none; border-radius:20px; background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 8px 18px rgba(61,149,214,.35); transition:.15s; }
+  .btn:active { transform:scale(.97); }
+  /* 记录 */
+  .log { margin-top:18px; }
+  .log h3 { font-size:14px; color:#5a8aa8; margin-bottom:8px; }
+  .log-item { background:#fff; border-radius:12px; padding:10px 14px; margin-bottom:8px; font-size:14px; color:#3a6b8c; display:flex; justify-content:space-between; }
+  .empty { font-size:13px; color:#9cc3d8; text-align:center; padding:10px; }
+  .done { text-align:center; color:#2b9e6b; font-weight:bold; margin-top:8px; font-size:15px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top">
+    <h1>💧 咕咚校园</h1>
+    <div class="date" id="date"></div>
+  </div>
+
+  <div class="roles">
+    <div class="role active" data-role="xueba">学霸同桌</div>
+    <div class="role" data-role="tucao">吐槽搭子</div>
+    <div class="role" data-role="shuijing">软萌水精灵</div>
+  </div>
+
+  <div class="ring-wrap">
+    <div class="ring-box">
+      <svg width="200" height="200">
+        <circle class="ring-bg" cx="100" cy="100" r="86"></circle>
+        <circle class="ring-fg" id="ring" cx="100" cy="100" r="86" stroke-dasharray="540" stroke-dashoffset="540"></circle>
+      </svg>
+      <div class="ring-text">
+        <div class="num" id="cups">0</div>
+        <div class="sub">/ 6 杯</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bubble">
+    <div class="who" id="who">学霸同桌</div>
+    <div id="talk">早八先喝一杯温水，大脑开机更快。</div>
+  </div>
+
+  <button class="btn" id="drink">我喝了一杯 💧</button>
+  <div class="done" id="done" style="display:none">🎉 今日目标完成，太棒了！</div>
+
+  <div class="log">
+    <h3>今日记录</h3>
+    <div id="loglist"><div class="empty">还没有记录，点上面按钮打卡吧</div></div>
+  </div>
+</div>
+
+<script>
+const GOAL = 6;
+let cups = 0;
+let role = 'xueba';
+
+const talks = {
+  xueba: [
+    '早八先喝一杯温水，大脑开机更快。',
+    '自习50分钟记得补一口，专注力会回来。',
+    '今天已经喝了{cups}杯，保持节奏，别断档。',
+    '水分充足，记忆力和状态都会在线。'
+  ],
+  tucao: [
+    '又想靠奶茶续命？先把这杯温水喝了再说。',
+    '你都坐一上午了，水杯是落宿舍了吗？',
+    '别等嗓子冒烟才想起来喝水，那是透支。',
+    '{cups}杯了，再坚持一下，别半途而废啊。'
+  ],
+  shuijing: [
+    '咕嘟咕嘟～喝一口水，我就变圆一点点🥺',
+    '宝宝，水杯就在手边，抬抬手就喝啦💧',
+    '已经{cups}杯啦，你对我真好，么么哒✨',
+    '不喝水我会蔫掉的，快喂我一口嘛～'
+  ]
+};
+const roleName = { xueba:'学霸同桌', tucao:'吐槽搭子', shuijing:'软萌水精灵' };
+
+const ring = document.getElementById('ring');
+const C = 540;
+function render(){
+  document.getElementById('cups').textContent = cups;
+  ring.style.strokeDashoffset = C - (C * Math.min(cups,GOAL)/GOAL);
+  document.getElementById('done').style.display = cups>=GOAL ? 'block':'none';
+}
+function say(){
+  const arr = talks[role];
+  let t = arr[Math.floor(Math.random()*arr.length)];
+  t = t.replace('{cups}', cups);
+  document.getElementById('who').textContent = roleName[role];
+  document.getElementById('talk').textContent = t;
+}
+document.querySelectorAll('.role').forEach(el=>{
+  el.onclick = ()=>{
+    document.querySelectorAll('.role').forEach(r=>r.classList.remove('active'));
+    el.classList.add('active');
+    role = el.dataset.role;
+    say();
+  };
+});
+document.getElementById('drink').onclick = ()=>{
+  if(cups>=GOAL){ say(); return; }
+  cups++;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const list = document.getElementById('loglist');
+  if(list.querySelector('.empty')) list.innerHTML='';
+  const item = document.createElement('div');
+  item.className='log-item';
+  item.innerHTML = `<span>💧 第 ${cups} 杯</span><span>${hh}:${mm}</span>`;
+  list.prepend(item);
+  render(); say();
+};
+document.getElementById('date').textContent = new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
+render(); say();
+</script>
+</body>
+</html>

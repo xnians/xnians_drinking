@@ -1,0 +1,49 @@
+<!-- pages/index/index.wxml —— 首页骨架 -->
+<view class="page">
+  <view class="top">
+    <view class="title">💧 咕咚校园</view>
+    <view class="date">{{dateStr}}</view>
+  </view>
+
+  <!-- 人设切换 -->
+  <view class="roles">
+    <view
+      class="role {{role===item.key?'active':''}}"
+      wx:for="{{roles}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchRole"
+    >{{item.name}}</view>
+  </view>
+
+  <!-- 进度圆圈 -->
+  <view class="ring-box">
+    <view class="ring-num">{{cups}}</view>
+    <view class="ring-sub">/ {{goal}} 杯</view>
+  </view>
+
+  <!-- 进度条 -->
+  <view class="bar-bg">
+    <view class="bar-fg" style="width:{{percent}}%"></view>
+  </view>
+
+  <!-- 人设气泡 -->
+  <view class="bubble">
+    <view class="who">{{roleName}}</view>
+    <view class="talk">{{talk}}</view>
+  </view>
+
+  <!-- 打卡按钮 -->
+  <button class="btn" bindtap="drink">我喝了一杯 💧</button>
+  <view class="done" wx:if="{{cups>=goal}}">🎉 今日目标完成，太棒了！</view>
+
+  <!-- 今日记录 -->
+  <view class="log">
+    <view class="log-title">今日记录</view>
+    <view class="log-item" wx:for="{{logs}}" wx:key="index">
+      <view>💧 第 {{item.cup}} 杯</view>
+      <view>{{item.time}}</view>
+    </view>
+    <view class="empty" wx:if="{{logs.length===0}}">还没有记录，点上面按钮打卡吧</view>
+  </view>
+</view>

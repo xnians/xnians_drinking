@@ -1,0 +1,27 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/chat/chat",
+    "pages/social/social",
+    "pages/schedule/schedule"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#4aa8e0",
+    "navigationBarTitleText": "咕咚校园",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#eaf4fb"
+  },
+  "tabBar": {
+    "color": "#8fb3c9",
+    "selectedColor": "#3d95d6",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "打卡" },
+      { "pagePath": "pages/chat/chat", "text": "陪伴" },
+      { "pagePath": "pages/social/social", "text": "圈子" },
+      { "pagePath": "pages/schedule/schedule", "text": "课表" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

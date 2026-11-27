@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import queue
 import random
 import sys
 import threading
@@ -48,6 +49,29 @@ ML_PER_CUP = 250                 # 默认一杯水按 250ml 估算
 DRINK_COOLDOWN = 3.0             # 点「喝水」后的冷却秒数（防连点）
 LOG_KEEP_DAYS = 400              # 明细日志保留天数
 
+# ---------------------------------------------------------- 个性化饮水建议 --
+# 口径：健康成年人每日基础需水量约 30 ml/kg 体重（公开常见经验值，非医疗标准），
+# 再按活动强度、环境温度、身体状态逐项修正。所有数值均为估算，仅供日常参考。
+WATER_ML_PER_KG = 30
+ACTIVITY_OPTIONS = (
+    ("sedentary", "久坐 · 上课自习", 0),
+    ("light", "轻度 · 步行通勤", 250),
+    ("moderate", "中度 · 体育课健身", 500),
+    ("high", "高强度 · 训练体力活", 800),
+)
+CLIMATE_OPTIONS = (
+    ("cool", "凉爽 · 20℃以下", 0),
+    ("mild", "常温 · 20-28℃", 200),
+    ("hot", "炎热 · 28℃以上", 400),
+)
+BODY_OPTIONS = (
+    ("normal", "平时", 0),
+    ("sweaty", "出汗较多 · 熬夜或特殊时期", 250),
+)
+ADVICE_ML_MIN, ADVICE_ML_MAX = 1000, 4000
+ADVICE_DISCLAIMER = ("按公开健康成人经验公式估算，仅供日常饮水参考，不构成医疗建议；"
+                     "如有疾病、孕期等特殊情况请遵医嘱。")
+
 # 世界卫生组织（WHO）建议：添加糖摄入应少于总能量的 10%，最好低于 5%。
 # 以每日 2000 kcal 为例，约等于 50 g（严格标准 25 g）。
 SUGAR_PERCENT_TARGET = 10.0
@@ -66,17 +90,119 @@ DEFAULT_QUOTES = [
 ]
 
 # ---------------------------------------------------------------- 配色 --
-BG = "#F3F7FC"          # 主背景
-CARD = "#FFFFFF"        # 卡片
-INK = "#17273D"         # 主文字
-MUTED = "#8193AB"       # 次要文字
-LINE = "#E4ECF6"        # 分割线
-PRIMARY = "#3E8EF7"     # 主题蓝
-PRIMARY_DARK = "#2776DE"
-TEAL = "#18B69B"        # 成功
-AMBER = "#F0A32C"       # 稍后 / 饮料
-TINT = "#F0F6FF"        # 浅蓝底
-SOFT = "#F5F9FF"        # 极浅蓝底
+# 两套主题；运行时 _THEME 指向其中一套。代码里统一用 P.xxx 取色，
+# 切换主题只需重建 UI（状态都在 cfg 里，不丢数据）。
+
+class _Palette:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+_LIGHT = dict(
+    BG="#F3F7FC",          # 主背景
+    CARD="#FFFFFF",        # 卡片
+    INK="#17273D",         # 主文字
+    MUTED="#8193AB",       # 次要文字
+    LINE="#E4ECF6",        # 分割线 / 卡片描边
+    PRIMARY="#3E8EF7",     # 主题蓝
+    PRIMARY_DARK="#2776DE",
+    TEAL="#18B69B",        # 成功
+    AMBER="#F0A32C",       # 稍后 / 饮料
+    TINT="#F0F6FF",        # 浅蓝底
+    SOFT="#F5F9FF",        # 极浅蓝底
+    SOFT_EDGE="#D5E5FB",   # 倒计时卡片描边
+    FAINT="#A8B6C8",       # 更淡的提示文字
+    DIVIDER="#F1F5FB",     # 设置项细分隔线
+    TRACK="#E7EEF8",       # 进度条底
+    TRACK_SUGAR="#EEF2F8", # 糖分条底
+    TICK="#C7D3E3",        # 糖分条刻度
+    OFF="#CBD7E5",         # 开关关闭态
+    DISABLED_BG="#EEF2F7", # 禁用按钮底
+    DISABLED_FG="#A9B6C7", # 禁用按钮字
+    BTN_LIGHT="#EDF4FF",   # light 变体按钮
+    BTN_LIGHT_HOVER="#DBE9FF",
+    BTN_OUTLINE="#FFFFFF", # outline 变体按钮
+    BTN_OUTLINE_HOVER="#EAF2FF",
+    BTN_SECONDARY="#DCE9FB",
+    DANGER="#E5484D",      # 超标红
+    DROP_LIGHT="#A9CBFB",  # 水滴高光
+    DROP_WHITE="#BCD9FF",  # 白水滴上的浅蓝高光
+    DROP_EDGE="#D9EAFF",   # 水滴外圈
+    HEAT_0="#E8EFF7",      # 热力图：无记录
+    HEAT_1="#CFE9FB",      # 热力图：少于半目标
+    HEAT_2="#7FD3EA",      # 热力图：接近达标
+    HEAT_3="#18B69B",      # 热力图：已达标
+)
+
+_DARK = dict(
+    BG="#111827",          # 主背景
+    CARD="#1B2636",        # 卡片
+    INK="#E8EEF7",         # 主文字
+    MUTED="#93A4BC",       # 次要文字
+    LINE="#2C3A4E",        # 分割线 / 卡片描边
+    PRIMARY="#5AA0FF",     # 主题蓝（深色下提亮）
+    PRIMARY_DARK="#82BAFF",
+    TEAL="#2FD1AE",        # 成功
+    AMBER="#F5B75C",       # 稍后 / 饮料
+    TINT="#1E3050",        # 浅蓝底 → 深蓝底
+    SOFT="#172438",        # 极浅蓝底 → 深蓝底
+    SOFT_EDGE="#2E466B",
+    FAINT="#6E8098",
+    DIVIDER="#243144",
+    TRACK="#2A3A4E",
+    TRACK_SUGAR="#2A3A4E",
+    TICK="#445158",
+    OFF="#3A4A5E",
+    DISABLED_BG="#263244",
+    DISABLED_FG="#5F7085",
+    BTN_LIGHT="#1E3352",
+    BTN_LIGHT_HOVER="#27436A",
+    BTN_OUTLINE="#1B2636",
+    BTN_OUTLINE_HOVER="#243B5C",
+    BTN_SECONDARY="#223651",
+    DANGER="#FF6B6B",
+    DROP_LIGHT="#7FB0F5",
+    DROP_WHITE="#9CC6FF",
+    DROP_EDGE="#33507A",
+    HEAT_0="#243144",
+    HEAT_1="#1E4A63",
+    HEAT_2="#1B8078",
+    HEAT_3="#2FD1AE",
+)
+
+THEMES = {"light": _Palette(**_LIGHT), "dark": _Palette(**_DARK)}
+_THEME_NAME = "light"
+P = THEMES["light"]        # 当前调色板（可变引用）
+
+# 旧代码仍用 BG/CARD/... 这些全局名取色。切换主题时把它们一并重绑定，
+# 于是重建 UI 后所有旧函数都能读到新主题色，无需逐行改造。
+BG = P.BG
+CARD = P.CARD
+INK = P.INK
+MUTED = P.MUTED
+LINE = P.LINE
+PRIMARY = P.PRIMARY
+PRIMARY_DARK = P.PRIMARY_DARK
+TEAL = P.TEAL
+AMBER = P.AMBER
+TINT = P.TINT
+SOFT = P.SOFT
+
+
+def set_palette(name: str) -> None:
+    """切换调色板。控件颜色在建 UI 时固化，调用方需重建 UI 才能生效。"""
+    global P, _THEME_NAME
+    global BG, CARD, INK, MUTED, LINE, PRIMARY, PRIMARY_DARK
+    global TEAL, AMBER, TINT, SOFT
+    _THEME_NAME = name if name in THEMES else "light"
+    P = THEMES[_THEME_NAME]
+    BG, CARD, INK, MUTED, LINE = P.BG, P.CARD, P.INK, P.MUTED, P.LINE
+    PRIMARY, PRIMARY_DARK = P.PRIMARY, P.PRIMARY_DARK
+    TEAL, AMBER, TINT, SOFT = P.TEAL, P.AMBER, P.TINT, P.SOFT
+
+
+def theme_name() -> str:
+    return _THEME_NAME
 
 # ---------------------------------------------------------------- 配置 --
 
@@ -104,8 +230,12 @@ def default_config() -> dict:
         "snooze_min": 5,
         "gentle": True,
         "autostart": False,
+        "theme": "light",
+        "hotkey": True,
         "kcal_per_day": 2000,
         "sugar_ratio": SUGAR_PERCENT_TARGET,
+        "profile": {"sex": "female", "weight": 55.0, "activity": "light",
+                    "climate": "mild", "body": "normal", "applied": False},
         "quotes": list(DEFAULT_QUOTES),
         "data": {"log": {}, "water_fix": {}, "day": "", "done": 0, "skipped": 0,
                  "events": [], "history": {}},
@@ -146,13 +276,17 @@ def load_config() -> dict:
         for key in ("interval_min", "goal", "snooze_min"):
             if key in raw:
                 cfg[key] = raw[key]
-        for key in ("gentle", "autostart"):
+        for key in ("gentle", "autostart", "hotkey"):
             if key in raw:
                 cfg[key] = bool(raw[key])
+        if raw.get("theme") in ("light", "dark"):
+            cfg["theme"] = raw["theme"]
         if isinstance(raw.get("quotes"), list) and raw["quotes"]:
             cfg["quotes"] = [str(q) for q in raw["quotes"] if str(q).strip()] or cfg["quotes"]
         if isinstance(raw.get("data"), dict):
             cfg["data"].update(raw["data"])
+        if "profile" in raw:
+            cfg["profile"] = normalize_profile(raw["profile"])
         if "kcal_per_day" in raw:
             cfg["kcal_per_day"] = raw["kcal_per_day"]
         if "sugar_ratio" in raw:
@@ -176,12 +310,77 @@ def load_config() -> dict:
 
 def save_config(cfg: dict) -> bool:
     try:
-        tmp = CONFIG_FILE.with_suffix(".json.tmp")
+        # 临时文件名带 PID，避免多进程/残留进程互相覆盖
+        tmp = CONFIG_FILE.with_name(f"{CONFIG_FILE.name}.{os.getpid()}.tmp")
         tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
         os.replace(tmp, CONFIG_FILE)
         return True
-    except OSError:
+    except (OSError, TypeError, ValueError):
         return False
+
+
+def _log_error(exc) -> None:
+    """把被吞掉的异常写到同目录日志，便于排障。"""
+    try:
+        line = f"{datetime.now():%Y-%m-%d %H:%M:%S} {type(exc).__name__}: {exc}\n"
+        with (BASE_DIR / "water_reminder.log").open("a", encoding="utf-8") as fh:
+            fh.write(line)
+    except OSError:
+        pass
+
+
+# ------------------------------------------------------------ 个性化饮水建议 --
+
+def _option_delta(options, key, default=0):
+    """(值, 文案, 增减ml) 元组表中按 key 取增减量，未知值回退默认。"""
+    for value, _label, delta in options:
+        if value == key:
+            return delta
+    return default
+
+
+def normalize_profile(raw) -> dict:
+    """清洗个人档案：类型/范围/枚举都收口，坏数据不进计算。"""
+    base = default_config()["profile"]
+    if not isinstance(raw, dict):
+        return base
+    sex = raw.get("sex")
+    base["sex"] = sex if sex in ("female", "male") else "female"
+    w = _num(raw.get("weight"), 55.0)
+    base["weight"] = max(30.0, min(200.0, w))
+    for key, table in (("activity", ACTIVITY_OPTIONS),
+                       ("climate", CLIMATE_OPTIONS),
+                       ("body", BODY_OPTIONS)):
+        val = raw.get(key)
+        base[key] = val if any(val == item[0] for item in table) else (
+            "light" if key == "activity" else "normal" if key == "body" else "mild")
+    base["applied"] = bool(raw.get("applied", False))
+    return base
+
+
+def water_advice(profile: dict) -> dict:
+    """按身体情况估算每日饮水量。
+
+    返回 ml / cups / 明细，均为估算值；杯数按 ML_PER_CUP 换算并夹在 GOAL 范围内。
+    """
+    p = normalize_profile(profile)
+    weight = p["weight"]
+    # 女性基础代谢与体液占比通常略低，按 0.9 系数估算（经验值，非医疗标准）
+    sex_factor = 0.9 if p["sex"] == "female" else 1.0
+    base = weight * WATER_ML_PER_KG * sex_factor
+    parts = [("体重基础", base, f"{weight:g} kg × {WATER_ML_PER_KG} ml"
+              + (" × 0.9" if sex_factor != 1.0 else ""))]
+    for title, table, key in (("活动量", ACTIVITY_OPTIONS, "activity"),
+                              ("环境气温", CLIMATE_OPTIONS, "climate"),
+                              ("身体状态", BODY_OPTIONS, "body")):
+        delta = _option_delta(table, p[key])
+        label = next((lab for val, lab, d in table if val == p[key]), "")
+        parts.append((title, delta, label))
+    total = base + sum(item[1] for item in parts[1:])
+    clamped = total < ADVICE_ML_MIN or total > ADVICE_ML_MAX
+    total = _clamp(round(total), ADVICE_ML_MIN, ADVICE_ML_MAX)
+    cups = _clamp(int(round(total / ML_PER_CUP)), GOAL_MIN, GOAL_MAX)
+    return {"ml": int(total), "cups": cups, "parts": parts, "clamped": clamped}
 
 
 # ---------------------------------------------------------------- 糖分评估 --
@@ -205,6 +404,56 @@ def sugar_verdict(total_g: float, limit_g: float) -> dict:
                 "text": "超过推荐量，建议明天换成无糖饮品"}
     return {"level": 3, "color": "#E5484D", "tag": "明显超标",
             "text": "糖分明显超标，注意控制含糖饮料"}
+
+
+# ------------------------------------------------------------ 数据看板 --
+# 全部数据来自本地 log / water_fix，不联网。这里是纯函数，便于单测。
+def day_cups(cfg: dict, key: str) -> int:
+    """某天实际杯数 = 日志 water + 手动修正 water_fix（口径与 _today_water 一致）。"""
+    rec = cfg.get("data", {}).get("log", {}).get(key)
+    base = int(rec.get("water", 0)) if isinstance(rec, dict) else 0
+    fix = cfg.get("data", {}).get("water_fix", {})
+    return max(0, base + int(fix.get(key, 0) or 0))
+
+
+def heatmap_weeks(cfg: dict, weeks: int = 12, today: "date | None" = None) -> list:
+    """近 N 周日历格：按周一到周日排列，每格 (day_key, cups, goal, in_future)。"""
+    today = today or date.today()
+    # 以本周周一为终点往前推 weeks-1 周
+    this_monday = date.fromordinal(today.toordinal() - today.weekday())
+    start = date.fromordinal(this_monday.toordinal() - (weeks - 1) * 7)
+    goal = max(1, cfg.get("goal", 8))
+    cells = []
+    for i in range(weeks * 7):
+        d = date.fromordinal(start.toordinal() + i)
+        key = d.isoformat()
+        cells.append((key, day_cups(cfg, key), goal, d > today))
+    return cells
+
+
+def week_trend(cfg: dict, today: "date | None" = None) -> list:
+    """本周 7 天趋势：[(星期序号0-6, 日期, 杯数, 是否今天/未来)]。"""
+    today = today or date.today()
+    monday = date.fromordinal(today.toordinal() - today.weekday())
+    goal = max(1, cfg.get("goal", 8))
+    out = []
+    for i in range(7):
+        d = date.fromordinal(monday.toordinal() + i)
+        out.append((i, d.isoformat(), day_cups(cfg, d.isoformat()),
+                    goal, d == today, d > today))
+    return out
+
+
+def heat_level(cups: int, goal: int) -> int:
+    """0 无记录 / 1 少于半目标 / 2 接近达标 / 3 已达标。"""
+    if cups <= 0:
+        return 0
+    ratio = cups / max(1, goal)
+    if ratio >= 1.0:
+        return 3
+    if ratio >= 0.5:
+        return 2
+    return 1
 
 
 # ---------------------------------------------------------------- 缩放 --
@@ -552,19 +801,19 @@ class RoundedButton(tk.Canvas):
         self.configure(width=w)
         h, r = self.height, min(S(12), self.height // 2)
         if not self._enabled:
-            fill, fg = "#EEF2F7", "#A9B6C7"
+            fill, fg = P.DISABLED_BG, P.DISABLED_FG
         elif self.variant == "primary":
             fill, fg = (PRIMARY_DARK if self._hover else PRIMARY), "#FFFFFF"
         elif self.variant == "light":
-            fill, fg = ("#DBE9FF" if self._hover else "#EDF4FF"), PRIMARY_DARK
+            fill, fg = (P.BTN_LIGHT_HOVER if self._hover else P.BTN_LIGHT), PRIMARY_DARK
         elif self.variant == "amber":
             fill, fg = ("#E0911A" if self._hover else AMBER), "#FFFFFF"
         elif self.variant == "teal":
             fill, fg = ("#149C85" if self._hover else TEAL), "#FFFFFF"
         elif self.variant == "outline":
-            fill, fg = ("#EAF2FF" if self._hover else "#FFFFFF"), PRIMARY
+            fill, fg = (P.BTN_OUTLINE_HOVER if self._hover else P.BTN_OUTLINE), PRIMARY
         else:
-            fill, fg = ("#DCE9FB" if self._hover else TINT), PRIMARY
+            fill, fg = (P.BTN_SECONDARY if self._hover else TINT), PRIMARY
         outline = PRIMARY if (self.variant == "outline" and self._enabled) else fill
         self._round_rect(1, 1, w - 1, h - 1, r, fill, outline)
         cx = w // 2
@@ -852,9 +1101,9 @@ class Slider(tk.Canvas):
         if xv > x1 + 1:
             self.create_line(x1, ty, xv, ty, fill=PRIMARY, width=S(8), capstyle="round")
         self.create_text(x1, S(self.TICK_Y), text=str(self.lo), anchor="n",
-                         fill="#A8B6C8", font=self.f_tick)
+                         fill=P.FAINT, font=self.f_tick)
         self.create_text(x2, S(self.TICK_Y), text=str(self.hi), anchor="n",
-                         fill="#A8B6C8", font=self.f_tick)
+                         fill=P.FAINT, font=self.f_tick)
         r = S(10)
         self.create_oval(xv - r, ty - r, xv + r, ty + r, fill="#FFFFFF", outline=PRIMARY,
                          width=S(3))
@@ -914,7 +1163,7 @@ class Switch(tk.Canvas):
         tw, th = S(46), S(24)
         x1 = self.w - tw
         y1 = (self.h - th) // 2
-        track = PRIMARY if self.value else "#CBD7E5"
+        track = PRIMARY if self.value else P.OFF
         self.create_oval(x1, y1, x1 + th, y1 + th, fill=track, outline=track)
         self.create_oval(x1 + tw - th, y1, x1 + tw, y1 + th, fill=track, outline=track)
         self.create_rectangle(x1 + th / 2, y1, x1 + tw - th / 2, y1 + th, fill=track,
@@ -939,17 +1188,22 @@ class Switch(tk.Canvas):
 class WaterReminderApp:
     def __init__(self):
         self.cfg = load_config()
+        set_palette(self.cfg.get("theme", "light"))
         self.paused_left = self.cfg["interval_min"] * 60
         self.next_due = time.time() + self.cfg["interval_min"] * 60
         self.popup = None
         self.drink_dialog = None
+        self.profile_dialog = None
         self.tray = None
+        self.hotkeys = None
         self.minimized = False
         self._tray_hinted = False
         self._goal_done_ui = False
         self._goal_forced = False
         self._last_sec = None
         self._last_drink_ts = 0.0
+        # 托盘等后台线程只往队列投递 UI 动作，由主线程在 _tick 中执行
+        self.ui_queue: "queue.Queue" = queue.Queue()
 
         self.win = tk.Tk()
         enable_windows_integration(self.win)
@@ -974,6 +1228,8 @@ class WaterReminderApp:
 
         self._roll_day()
         self._build_ui()
+        if self.cfg.get("hotkey", True):
+            self.hotkeys = GlobalHotkeys(self)
         self._tick()
 
     # ------------------------------------------------------------ 构建 --
@@ -1003,7 +1259,7 @@ class WaterReminderApp:
         return inner
 
     def _soft_card(self, parent):
-        outer = tk.Frame(parent, bg="#D5E5FB")
+        outer = tk.Frame(parent, bg=P.SOFT_EDGE)
         outer.pack(fill="x", padx=S(18), pady=(0, S(2)))
         inner = tk.Frame(outer, bg=SOFT)
         inner.pack(fill="both", expand=True, padx=1, pady=1)
@@ -1013,6 +1269,7 @@ class WaterReminderApp:
         F = self.F
         page = tk.Frame(self.win, bg=BG)
         page.pack(fill="both", expand=True)
+        self.page = page
 
         # ---- 顶部横幅 ----
         banner = FitFrame(page, height=S(78), bg=PRIMARY)
@@ -1116,6 +1373,34 @@ class WaterReminderApp:
                                        font=F["tiny"])
         self.btn_minus.pack(side="right", padx=S(6))
 
+        # ---- 专属饮水建议 ----
+        self._section(content, "专属饮水建议")
+        advice_card = self._card(content)
+        a_head = tk.Frame(advice_card, bg=CARD)
+        a_head.pack(fill="x", padx=S(16), pady=(S(12), S(2)))
+        self.advice_badge = tk.Label(a_head, text="", font=F["tiny"], fg="#FFFFFF", bg=TEAL)
+        self.advice_badge.pack(side="right")
+        self.advice_num = tk.Label(a_head, text="", font=F["num"], fg=PRIMARY, bg=CARD)
+        self.advice_num.pack(anchor="w")
+        self.advice_cups = tk.Label(advice_card, text="", font=F["small"], fg=MUTED, bg=CARD)
+        self.advice_cups.pack(anchor="w", padx=S(16))
+        self.advice_detail = tk.Label(advice_card, text="", font=F["tiny"], fg=MUTED,
+                                      bg=CARD, justify="left", anchor="w")
+        self.advice_detail.pack(fill="x", padx=S(16), pady=(S(8), 0))
+        self.advice_note = tk.Label(advice_card, text=ADVICE_DISCLAIMER, font=F["tiny"],
+                                    fg=P.FAINT, bg=CARD, justify="left", anchor="w")
+        self.advice_note.pack(fill="x", padx=S(16), pady=(S(4), 0))
+        self.advice_detail.bind("<Configure>", self._wrap_advice)
+        self.advice_note.bind("<Configure>", self._wrap_advice)
+        a_row = tk.Frame(advice_card, bg=CARD)
+        a_row.pack(fill="x", padx=S(16), pady=(S(10), S(13)))
+        RoundedButton(a_row, "填写身体情况", self.open_profile_dialog, variant="secondary",
+                      height=S(38), padx=S(14), font=F["small"]).pack(side="left")
+        self.btn_apply_advice = RoundedButton(a_row, "应用为目标", self.apply_advice,
+                                              variant="teal", height=S(38), padx=S(16),
+                                              font=F["small"])
+        self.btn_apply_advice.pack(side="right")
+
         # ---- 周 / 月累计 ----
         self._section(content, "累计喝水")
         period = self._card(content)
@@ -1132,10 +1417,43 @@ class WaterReminderApp:
             tk.Label(cell, text=title, font=F["small"], fg=MUTED, bg=CARD).pack()
             num = tk.Label(cell, text="0 杯", font=F["num"], fg=INK, bg=CARD)
             num.pack(pady=(S(1), 0))
-            tk.Label(cell, text=hint, font=F["tiny"], fg="#A8B6C8", bg=CARD).pack()
+            tk.Label(cell, text=hint, font=F["tiny"], fg=P.FAINT, bg=CARD).pack()
             self.period_values[key] = num
         tk.Label(period, text="每周一 / 每月 1 号自动重新统计，无需手动清零",
-                 font=F["tiny"], fg="#A8B6C8", bg=CARD).pack(pady=(0, S(10)))
+                 font=F["tiny"], fg=P.FAINT, bg=CARD).pack(pady=(0, S(10)))
+
+        # ---- 数据看板（热力图 + 周趋势）----
+        self._section(content, "数据看板")
+        dash = self._card(content)
+        dhead = tk.Frame(dash, bg=CARD)
+        dhead.pack(fill="x", padx=S(16), pady=(S(12), S(2)))
+        tk.Label(dhead, text="近 12 周饮水热力图", font=F["sw_title"], fg=INK,
+                 bg=CARD).pack(side="left")
+        self.heat_summary = tk.Label(dhead, text="", font=F["tiny"], fg=P.FAINT, bg=CARD)
+        self.heat_summary.pack(side="right")
+        self.heat_canvas = tk.Canvas(dash, height=S(128), bg=CARD, highlightthickness=0,
+                                     bd=0)
+        self.heat_canvas.pack(fill="x", padx=S(16), pady=(S(4), 0))
+        self.heat_canvas.bind("<Configure>", lambda e: self._draw_heatmap())
+        # 图例
+        legend = tk.Frame(dash, bg=CARD)
+        legend.pack(fill="x", padx=S(16), pady=(S(2), S(6)))
+        tk.Label(legend, text="少", font=F["tiny"], fg=P.FAINT, bg=CARD).pack(side="left")
+        for lvl in range(4):
+            box = tk.Frame(legend, bg=(P.HEAT_0, P.HEAT_1, P.HEAT_2, P.HEAT_3)[lvl],
+                           width=S(13), height=S(13))
+            box.pack(side="left", padx=1)
+            box.pack_propagate(False)
+        tk.Label(legend, text="多 / 达标", font=F["tiny"], fg=P.FAINT, bg=CARD).pack(
+            side="left", padx=(S(3), 0))
+        tk.Frame(dash, bg=P.LINE, height=1).pack(fill="x", padx=S(16), pady=(S(4), S(4)))
+        self.trend_canvas = tk.Canvas(dash, height=S(132), bg=CARD, highlightthickness=0,
+                                      bd=0)
+        self.trend_canvas.pack(fill="x", padx=S(16), pady=(0, S(6)))
+        self.trend_canvas.bind("<Configure>", lambda e: self._draw_trend())
+        self.trend_note = tk.Label(dash, text="", font=F["tiny"], fg=P.FAINT, bg=CARD,
+                                   anchor="w", justify="left")
+        self.trend_note.pack(fill="x", padx=S(16), pady=(0, S(12)))
 
         # ---- 饮料与糖分 ----
         self._section(content, "饮料与糖分")
@@ -1155,7 +1473,7 @@ class WaterReminderApp:
         self.sugar_advice = tk.Label(sugar_card, text="", font=F["small"], fg=MUTED,
                                      bg=CARD, justify="left", anchor="w")
         self.sugar_advice.pack(fill="x", padx=S(16), pady=(S(10), S(5)))
-        self.sugar_meta = tk.Label(sugar_card, text="", font=F["tiny"], fg="#A8B6C8",
+        self.sugar_meta = tk.Label(sugar_card, text="", font=F["tiny"], fg=P.FAINT,
                                    bg=CARD, justify="left", anchor="w")
         self.sugar_meta.pack(fill="x", padx=S(16), pady=(0, S(13)))
         self.sugar_advice.bind("<Configure>", self._wrap_sugar_labels)
@@ -1184,11 +1502,20 @@ class WaterReminderApp:
         self.sw_gentle = Switch(sbody, self.cfg["gentle"], self.on_gentle, title="温和提醒",
                                 desc="到点只闪烁任务栏，不打断你手上的工作")
         self.sw_gentle.pack(fill="x", pady=(0, S(10)))
-        tk.Frame(sbody, bg="#F1F5FB", height=1).pack(fill="x", pady=(0, S(10)))
+        tk.Frame(sbody, bg=P.DIVIDER, height=1).pack(fill="x", pady=(0, S(10)))
         self.sw_autostart = Switch(sbody, self.cfg["autostart"], self.on_autostart,
                                    title="开机自动启动",
                                    desc="登录 Windows 后自动在后台开始提醒")
         self.sw_autostart.pack(fill="x")
+        tk.Frame(sbody, bg=P.DIVIDER, height=1).pack(fill="x", pady=(S(6), S(6)))
+        self.sw_dark = Switch(sbody, self.cfg.get("theme") == "dark", self.on_theme,
+                              title="深色模式",
+                              desc="夜间或低光环境下更护眼")
+        self.sw_dark.pack(fill="x", pady=(0, S(10)))
+        self.sw_hotkey = Switch(sbody, self.cfg.get("hotkey", True), self.on_hotkey,
+                                title="全局快捷键",
+                                desc="Ctrl+Alt+W 记一杯 · Ctrl+Alt+P 暂停/继续")
+        self.sw_hotkey.pack(fill="x")
 
         # ---- 提醒语 ----
         self._section(content, "提醒语")
@@ -1211,7 +1538,7 @@ class WaterReminderApp:
         self.quotes_label.pack(fill="x", padx=S(12), pady=(S(4), S(13)))
 
         tk.Label(content, text=f"{APP_NAME} v{VERSION} · 设置与数据保存在同目录 config.json",
-                 font=F["tiny"], fg="#A8B6C8", bg=BG).pack(pady=(S(10), S(14)))
+                 font=F["tiny"], fg=P.FAINT, bg=BG).pack(pady=(S(10), S(14)))
 
         self.refresh_all()
 
@@ -1279,14 +1606,19 @@ class WaterReminderApp:
         return recommended_sugar(self.cfg["kcal_per_day"], self.cfg["sugar_ratio"])
 
     def _roll_day(self):
-        """新的一天：归档旧日、清理过期明细。周/月由日志按日期实时汇总，自动重置。"""
+        """新的一天：归档旧日、清理过期明细，并重置计时与达标状态。"""
         today = self._day_key()
         data = self.cfg["data"]
         if data.get("day") == today:
             return
-        if data.get("day"):
-            done = int(data.get("done", 0))
-            data["history"][data["day"]] = {
+        old_day = data.get("day")
+        if old_day:
+            # 以当天明细 + 修正量为准，避免 done 字段与日志不一致时归档错数
+            rec = self._get_day(old_day)
+            fix = data.get("water_fix", {})
+            done = max(0, int(rec.get("water", 0))
+                       + int(fix.get(old_day, 0) if isinstance(fix, dict) else 0))
+            data["history"][old_day] = {
                 "done": done, "goal": self.cfg["goal"],
                 "achieved": done >= self.cfg["goal"]}
             for old in sorted(data["history"])[:-LOG_KEEP_DAYS]:
@@ -1298,6 +1630,16 @@ class WaterReminderApp:
             self._log().pop(key, None)
         for key in [k for k in data["water_fix"] if k not in keep]:
             data["water_fix"].pop(key, None)
+        # 「重新开始」的强制状态不能跨天残留，否则次日达标后不再停表
+        self._goal_forced = False
+        self._goal_done_ui = False
+        # 午夜后重新排定下一次提醒，避免用过期的 next_due 立刻弹窗
+        if self.next_due is not None:
+            self._schedule_next()
+        else:
+            self.paused_left = self.cfg["interval_min"] * 60
+            self._last_sec = None
+        self._save()
 
     def record_water(self, cups: int = 1, log_cup: bool = True) -> None:
         """记录喝水：今日 / 本周 / 本月同时 +cups。
@@ -1639,14 +1981,26 @@ class WaterReminderApp:
         self._last_sec = None
 
     def after(self, ms, func):
-        try:
-            self.win.after(ms, func)
-        except (tk.TclError, RuntimeError):
-            pass
+        """线程安全投递：托盘线程只入队，UI 动作由主线程 _tick 执行。
+
+        参数 ms 仅为兼容旧调用签名保留，动作会在下一个 tick（≤1 秒）内执行。
+        """
+        if callable(func):
+            self.ui_queue.put(func)
 
     # ------------------------------------------------------------ 定时 --
     def _tick(self):
         try:
+            # 先排空后台线程投递的动作，全部在主线程执行
+            while True:
+                try:
+                    action = self.ui_queue.get_nowait()
+                except queue.Empty:
+                    break
+                try:
+                    action()
+                except Exception as exc:
+                    _log_error(exc)
             self._roll_day()
             now = time.time()
             goal_paused = self.goal_reached and not self._goal_forced
@@ -1676,8 +2030,15 @@ class WaterReminderApp:
                 self.time_label.configure(text=text, fg=fg)
                 self.time_sub.configure(text=sub)
         except tk.TclError:
-            return
-        self.win.after(1000, self._tick)
+            pass
+        except Exception as exc:
+            _log_error(exc)
+        finally:
+            # 任何异常都不能让定时器永久停摆
+            try:
+                self.win.after(1000, self._tick)
+            except (tk.TclError, RuntimeError):
+                pass
 
     # ------------------------------------------------------------ 刷新 --
     def _draw_progress(self):
@@ -1688,7 +2049,7 @@ class WaterReminderApp:
         h = S(10)
         goal = max(1, self.cfg["goal"])
         ratio = min(1.0, self._today_done() / goal)
-        self.progress.create_line(0, h // 2, w, h // 2, fill="#E7EEF8", width=h,
+        self.progress.create_line(0, h // 2, w, h // 2, fill=P.TRACK, width=h,
                                   capstyle="round")
         if ratio > 0:
             self.progress.create_line(0, h // 2, max(h, int(w * ratio)), h // 2,
@@ -1705,12 +2066,106 @@ class WaterReminderApp:
         limit = max(1.0, self.sugar_limit())
         yesterday = self.yesterday_sugar()
         verdict = sugar_verdict(yesterday, limit)
-        bar.create_line(0, h // 2, w, h // 2, fill="#EEF2F8", width=h, capstyle="round")
+        bar.create_line(0, h // 2, w, h // 2, fill=P.TRACK_SUGAR, width=h, capstyle="round")
         ratio = min(1.0, yesterday / limit)
         if ratio > 0:
             bar.create_line(0, h // 2, max(h, int(w * ratio)), h // 2, fill=verdict["color"],
                             width=h, capstyle="round")
-        bar.create_line(w - S(2), S(1), w - S(2), h - S(1), fill="#C7D3E3", width=S(2))
+        bar.create_line(w - S(2), S(1), w - S(2), h - S(1), fill=P.TICK, width=S(2))
+
+    def _draw_heatmap(self):
+        """近 12 周热力图：列=周(12)，行=周一到周日(7)。"""
+        cv = getattr(self, "heat_canvas", None)
+        if cv is None:
+            return
+        cv.delete("all")
+        w = cv.winfo_width()
+        if w <= 1:
+            return
+        cells = heatmap_weeks(self.cfg)
+        pad_x = S(10)
+        top = S(20)
+        gap = S(2)
+        cols, rows = 12, 7
+        cell = min(S(16), (w - pad_x * 2 - gap * (cols - 1)) / cols)
+        if cell < 3:
+            return
+        f_tick = self.F["tiny"]
+        # 月份标签（每周第一列那周的周一）
+        last_month = None
+        for c in range(cols):
+            key = cells[c * rows][0]
+            month = int(key[5:7])
+            if month != last_month:
+                x = pad_x + c * (cell + gap)
+                cv.create_text(x, S(9), text=f"{month}月", anchor="w",
+                               fill=P.FAINT, font=f_tick)
+                last_month = month
+        colors = (P.HEAT_0, P.HEAT_1, P.HEAT_2, P.HEAT_3)
+        achieved = 0
+        for i, (key, cups, goal, future) in enumerate(cells):
+            c, r = divmod(i, rows)
+            x = pad_x + c * (cell + gap)
+            y = top + r * (cell + gap)
+            lvl = heat_level(cups, goal)
+            if future:
+                lvl = -1  # 未来日期留空描边
+            if lvl < 0:
+                cv.create_rectangle(x, y, x + cell, y + cell, outline=P.LINE,
+                                    fill=P.CARD, width=1)
+            else:
+                cv.create_rectangle(x, y, x + cell, y + cell, fill=colors[lvl],
+                                    outline="", tags=f"cell_{i}")
+                if lvl == 3:
+                    achieved += 1
+        # 达标统计
+        if hasattr(self, "heat_summary"):
+            self.heat_summary.configure(text=f"近 12 周达标 {achieved} 天")
+
+    def _draw_trend(self):
+        """本周 7 天杯数柱状图 + 目标虚线。"""
+        cv = getattr(self, "trend_canvas", None)
+        if cv is None:
+            return
+        cv.delete("all")
+        w = cv.winfo_width()
+        if w <= 1:
+            return
+        data = week_trend(self.cfg)
+        pad_x = S(14)
+        top = S(12)
+        base = S(100)
+        chart_h = base - top
+        f_tick = self.F["tiny"]
+        goal = data[0][3]
+        peak = max([d[2] for d in data] + [goal])
+        scale_h = max(1, peak) * 1.15
+        slot = (w - pad_x * 2) / 7
+        bar_w = min(S(26), slot * 0.62)
+        # 目标虚线
+        gy = base - chart_h * (goal / scale_h)
+        for x in range(int(pad_x), int(w - pad_x), S(10)):
+            cv.create_line(x, gy, x + S(5), gy, fill=P.MUTED, width=1)
+        cv.create_text(w - pad_x - S(2), gy - S(7), text=f"目标 {goal}杯", anchor="e",
+                       fill=P.MUTED, font=f_tick)
+        weekday = "一二三四五六日"
+        for i, _key, cups, _goal, is_today, future in data:
+            cx = pad_x + slot * (i + 0.5)
+            h = chart_h * (cups / scale_h) if cups > 0 else 0
+            color = (P.TEAL if cups >= goal else P.PRIMARY) if not future else P.LINE
+            if h > 0:
+                cv.create_rectangle(cx - bar_w / 2, base - h, cx + bar_w / 2, base,
+                                    fill=color, outline="")
+                cv.create_text(cx, base - h - S(7), text=str(cups), fill=P.INK, font=f_tick)
+            label = weekday[i]
+            cv.create_text(cx, base + S(11), text=label,
+                           fill=P.PRIMARY if is_today else P.FAINT,
+                           font=f_tick)
+        if hasattr(self, "trend_note"):
+            total = sum(d[2] for d in data)
+            met = sum(1 for d in data if d[2] >= goal and not d[5])
+            self.trend_note.configure(
+                text=f"本周累计 {total} 杯 · 达标 {met}/7 天 · 每格按当日杯数/目标着色")
 
     def _wrap_sugar_labels(self, _event=None):
         width = max(S(240), self.sugar_advice.winfo_width() or S(330))
@@ -1735,7 +2190,7 @@ class WaterReminderApp:
         entries = entries[-5:]
         if not entries:
             tk.Label(self.timeline, text="今天还没有记录，点上面的「喝水」或「喝饮料」开始吧",
-                     font=self.F["small"], fg="#A8B6C8", bg=CARD).pack(anchor="w")
+                     font=self.F["small"], fg=P.FAINT, bg=CARD).pack(anchor="w")
             return
         meta = {"done": ("✓", "喝了一杯水", TEAL), "skip": ("⇥", "已跳过", MUTED),
                 "snooze": ("◷", "稍后提醒", AMBER), "water": ("✓", "喝了一杯水", TEAL)}
@@ -1757,15 +2212,41 @@ class WaterReminderApp:
                 side="left", padx=(S(2), S(6)))
             tk.Label(row, text=text, font=self.F["small"], fg=INK, bg=CARD).pack(side="left")
 
+    def _wrap_advice(self, _event=None):
+        width = max(S(240), int((self.advice_detail.winfo_width() or S(330)) * 0.98))
+        f = tkfont.Font(font=self.advice_detail.cget("font"))
+        self.advice_detail.configure(
+            wraplength=width,
+            text=wrap_paragraph(getattr(self, "_advice_detail_text", ""), width, f))
+        self.advice_note.configure(wraplength=width)
+
     def refresh_all(self):
         goal = self.cfg["goal"]
         today = self._today_water()
         today_sugar = self.today_sugar()
         limit = self.sugar_limit()
 
+        # 专属饮水建议
+        advice = water_advice(self.cfg.get("profile"))
+        applied = bool(self.cfg.get("profile", {}).get("applied"))
+        self.advice_num.configure(text=f"≈ {advice['ml']} ml / 天")
+        self.advice_cups.configure(
+            text=f"按每杯 {ML_PER_CUP} ml 约 {advice['cups']} 杯"
+                 + (" · 已同步为每日目标" if applied else " · 尚未应用到目标"))
+        self.advice_badge.configure(text=" 估算 · 已应用 " if applied else " 估算 · 待应用 ",
+                                    bg=TEAL if applied else MUTED)
+        detail = "；".join(f"{name} {int(value):+d} ml" if i else f"{name} {int(value)} ml"
+                          for i, (name, value, _desc) in enumerate(advice["parts"]))
+        if advice["clamped"]:
+            detail += f"（已收敛到 {ADVICE_ML_MIN}–{ADVICE_ML_MAX} ml 区间）"
+        self._advice_detail_text = "计算：" + detail + "。"
+        self._wrap_advice()
+        if getattr(self, "btn_apply_advice", None) is not None:
+            self.btn_apply_advice.set_enabled(not applied or self.cfg["goal"] != advice["cups"])
+
         self.stat_values["cups"].configure(text=f"{today}/{goal}")
         self.stat_values["sugar"].configure(text=f"{today_sugar:.0f}g",
-                                            fg=INK if today_sugar <= limit else "#E5484D")
+                                            fg=INK if today_sugar <= limit else P.DANGER)
         self.stat_values["rate"].configure(text=f"{self._rate()}%")
         self.stat_values["streak"].configure(text=f"{self._streak_days()} 天")
         skipped = f" · 跳过 {self.cfg['data']['skipped']} 次" if self.cfg["data"]["skipped"] else ""
@@ -1810,6 +2291,8 @@ class WaterReminderApp:
             self.btn_minus.set_enabled(today > 0)
         self._draw_progress()
         self._refresh_timeline()
+        self._draw_heatmap()
+        self._draw_trend()
         quotes = self.cfg["quotes"]
         tkfont_f = tkfont.Font(font=self.quotes_label.cget("font"))
         preview = " ｜ ".join(quotes[:5]) + (" …" if len(quotes) > 5 else "")
@@ -1838,6 +2321,66 @@ class WaterReminderApp:
                 self.sl_goal.set(self.cfg["goal"])
         self._save()
         self.refresh_all()
+
+    # ------------------------------------------------------------ 外观 --
+    def on_theme(self, value):
+        self.cfg["theme"] = "dark" if value else "light"
+        self._save()
+        self._rebuild_ui()
+
+    def _rebuild_ui(self):
+        """切换主题后重建整套 UI：控件颜色在建时固化，重建最彻底且状态都在 cfg 里。"""
+        set_palette(self.cfg["theme"])
+        # 关掉可能打开的浮层，避免它们引用即将销毁的控件
+        for dialog in (self.popup, self.drink_dialog, self.profile_dialog):
+            if dialog is not None:
+                try:
+                    dialog.close()
+                except (tk.TclError, Exception):  # noqa: BLE001
+                    pass
+        self.popup = self.drink_dialog = self.profile_dialog = None
+        try:
+            if getattr(self, "page", None) is not None:
+                self.page.destroy()
+        except tk.TclError:
+            pass
+        self.win.configure(bg=BG)
+        self._last_sec = None
+        self._build_ui()
+
+    def on_hotkey(self, value):
+        self.cfg["hotkey"] = bool(value)
+        self._save()
+        if value:
+            if self.hotkeys is None:
+                self.hotkeys = GlobalHotkeys(self)
+            state = "已启用" if self.hotkeys.ok else "注册失败，可能被其它软件占用"
+        else:
+            if self.hotkeys is not None:
+                self.hotkeys.close()
+                self.hotkeys = None
+            state = "已关闭"
+        Toast(self.win, f"全局快捷键{state}", "ok" if value and self.hotkeys and self.hotkeys.ok
+              else "info")
+
+    # -------------------------------------------------------- 个性化建议 --
+    def open_profile_dialog(self):
+        if getattr(self, "profile_dialog", None) is not None:
+            self.profile_dialog.focus()
+            return
+        self.profile_dialog = ProfileDialog(self)
+
+    def profile_dialog_closed(self):
+        self.profile_dialog = None
+
+    def apply_advice(self):
+        advice = water_advice(self.cfg.get("profile"))
+        profile = normalize_profile(self.cfg.get("profile"))
+        profile["applied"] = True
+        self.cfg["profile"] = profile
+        self.on_goal(advice["cups"])          # 复用已有回调：校验/保存/刷新一步到位
+        Toast(self.win, f"已按身体情况设置每日目标：{advice['cups']} 杯（约 {advice['ml']} ml）",
+              "ok")
 
     def on_gentle(self, value):
         self.cfg["gentle"] = bool(value)
@@ -1971,6 +2514,8 @@ class WaterReminderApp:
                 pass
         if self.tray is not None:
             self.tray.close()
+        if self.hotkeys is not None:
+            self.hotkeys.close()
         try:
             self.win.destroy()
         except tk.TclError:
@@ -2070,7 +2615,7 @@ class DrinkDialog:
         self.sugar_entry = self._entry(pad, self.sugar_var, self.save)
         self.sugar_entry.pack(fill="x", ipady=S(7), pady=(0, S(4)))
         self.hint = tk.Label(pad, text="不知道含糖量？看包装上的「碳水化合物」或「糖」那一栏",
-                             font=F["tiny"], fg="#A8B6C8", bg=CARD, anchor="w",
+                             font=F["tiny"], fg=P.FAINT, bg=CARD, anchor="w",
                              justify="left", wraplength=max(S(200), self._w - S(90)))
         self.hint.pack(fill="x", pady=(S(2), S(10)))
 
@@ -2192,14 +2737,9 @@ class DrinkDialog:
     def _values(self):
         """返回 (名称, 容量ml, 每100ml含糖量, 实际摄入糖克数)。"""
         name = self.name_var.get().strip() or "饮料"
-        try:
-            ml = max(0.0, min(5000.0, float(self.ml_var.get() or 0)))
-        except ValueError:
-            ml = 0.0
-        try:
-            per100 = max(0.0, min(100.0, float(self.sugar_var.get() or 0)))
-        except ValueError:
-            per100 = 0.0
+        # _num 会拦截 nan/inf，避免记录出 5000ml / 5000g 的荒谬数据
+        ml = max(0.0, min(5000.0, _num(self.ml_var.get(), 0.0)))
+        per100 = max(0.0, min(100.0, _num(self.sugar_var.get(), 0.0)))
         return name, ml, per100, per100 * ml / 100.0
 
     def _wrap_calc(self, width):
@@ -2241,6 +2781,207 @@ class DrinkDialog:
         except tk.TclError:
             pass
         self.app.drink_dialog_closed()
+
+
+# ------------------------------------------------------------ 身体情况档案 --
+
+class ProfileDialog:
+    """填写身体情况，实时预览估算结果并保存。
+
+    与 DrinkDialog 一致使用普通窗口，保证输入框能稳定获得键盘焦点。
+    """
+
+    W, H = 460, 620
+
+    def __init__(self, app: WaterReminderApp):
+        self.app = app
+        F = app.F
+        self.top = top = tk.Toplevel(app.win)
+        top.withdraw()
+        top.title("填写身体情况")
+        top.transient(app.win)
+        top.configure(bg=BG)
+        top.resizable(False, False)
+        self._position_near_main()
+        top.bind("<Escape>", lambda e: self.close())
+        top.protocol("WM_DELETE_WINDOW", self.close)
+
+        shell = tk.Frame(top, bg=CARD, highlightthickness=1, highlightbackground=LINE)
+        shell.pack(fill="both", expand=True)
+        head = tk.Frame(shell, bg=TEAL, height=S(50))
+        head.pack(fill="x")
+        head.pack_propagate(False)
+        tk.Label(head, text="定制你的专属饮水建议", font=F["sw_title"], fg="#FFFFFF",
+                 bg=TEAL).pack(side="left", padx=S(18))
+
+        scroll_holder = tk.Frame(shell, bg=CARD)
+        scroll_holder.pack(fill="both", expand=True)
+        self._dcanvas = tk.Canvas(scroll_holder, bg=CARD, highlightthickness=0, bd=0)
+        vbar = tk.Scrollbar(scroll_holder, orient="vertical", command=self._dcanvas.yview)
+        self._dcanvas.configure(yscrollcommand=vbar.set)
+        vbar.pack(side="right", fill="y")
+        self._dcanvas.pack(side="left", fill="both", expand=True)
+        body = tk.Frame(self._dcanvas, bg=CARD)
+        body_id = self._dcanvas.create_window((0, 0), window=body, anchor="nw")
+        body.bind("<Configure>", lambda e: self._dcanvas.configure(
+            scrollregion=self._dcanvas.bbox("all")))
+        self._dcanvas.bind("<Configure>", lambda e: self._dcanvas.itemconfigure(
+            body_id, width=e.width))
+        pad = tk.Frame(body, bg=CARD)
+        pad.pack(fill="both", expand=True, padx=S(16), pady=(S(12), 0))
+
+        p = normalize_profile(app.cfg.get("profile"))
+        wrap_w = max(S(200), self._w - S(80))
+
+        # 性别
+        tk.Label(pad, text="生理性别（影响基础系数）", font=F["small"], fg=MUTED, bg=CARD,
+                 anchor="w").pack(fill="x")
+        self.sex_var = tk.StringVar(value=p["sex"])
+        sexes = tk.Frame(pad, bg=CARD)
+        sexes.pack(fill="x", pady=(S(4), S(10)))
+        for val, text in (("female", "女"), ("male", "男")):
+            tk.Radiobutton(sexes, text=text, value=val, variable=self.sex_var,
+                           command=self.update_preview, font=F["small"], fg=INK, bg=CARD,
+                           selectcolor=TINT, activebackground=CARD,
+                           highlightthickness=0).pack(side="left", padx=(0, S(16)))
+
+        # 体重
+        tk.Label(pad, text="体重（kg）", font=F["small"], fg=MUTED, bg=CARD,
+                 anchor="w").pack(fill="x")
+        self.weight_var = tk.StringVar(value=f"{p['weight']:g}")
+        wrow = tk.Frame(pad, bg=CARD)
+        wrow.pack(fill="x", pady=(S(4), S(12)))
+        self.weight_entry = tk.Entry(wrow, textvariable=self.weight_var, font=F["body"],
+                                     fg=INK, bg=SOFT, relief="flat", bd=0,
+                                     insertbackground=TEAL, highlightthickness=1,
+                                     highlightbackground=LINE, highlightcolor=TEAL,
+                                     takefocus=1)
+        self.weight_entry.pack(fill="x", ipady=S(7))
+
+        # 三个单选组
+        self._radio_group(pad, "日常活动强度", "activity", ACTIVITY_OPTIONS,
+                          p["activity"], wrap_w)
+        self._radio_group(pad, "所处环境温度", "climate", CLIMATE_OPTIONS,
+                          p["climate"], wrap_w)
+        self._radio_group(pad, "身体状态", "body", BODY_OPTIONS, p["body"], wrap_w)
+
+        # 预览
+        summary = tk.Frame(pad, bg=SOFT, highlightthickness=1, highlightbackground=LINE)
+        summary.pack(fill="x", pady=(S(10), S(6)))
+        inner = tk.Frame(summary, bg=SOFT)
+        inner.pack(fill="x", padx=S(12), pady=S(10))
+        line = tk.Frame(inner, bg=SOFT)
+        line.pack(fill="x")
+        tk.Label(line, text="建议每日饮水", font=F["body"], fg=INK, bg=SOFT).pack(side="left")
+        self.preview_ml = tk.Label(line, text="", font=F["body"], fg=PRIMARY, bg=SOFT)
+        self.preview_ml.pack(side="left", padx=(S(6), 0))
+        self.preview_cups = tk.Label(line, text="", font=F["tiny"], fg=MUTED, bg=SOFT)
+        self.preview_cups.pack(side="right")
+        self.preview_detail = tk.Label(inner, text="", font=F["tiny"], fg=MUTED, bg=SOFT,
+                                       anchor="w", justify="left", wraplength=wrap_w)
+        self.preview_detail.pack(fill="x", pady=(S(5), 0))
+        tk.Label(inner, text=ADVICE_DISCLAIMER, font=F["tiny"], fg=P.FAINT, bg=SOFT,
+                 anchor="w", justify="left", wraplength=wrap_w).pack(fill="x", pady=(S(5), 0))
+
+        foot = tk.Frame(shell, bg=CARD)
+        foot.pack(side="bottom", fill="x", padx=S(16), pady=(S(6), S(12)))
+        RoundedButton(foot, "取消", self.close, variant="secondary", height=S(42),
+                      padx=S(24), font=F["btn"]).pack(side="right", padx=(S(8), 0))
+        RoundedButton(foot, "保存身体情况", self.save, variant="teal", height=S(42),
+                      padx=S(20), font=F["btn"]).pack(side="right")
+
+        self.weight_var.trace_add("write", lambda *_: self.update_preview())
+        self.update_preview()
+        DrinkDialog._bind_local_wheel(self, top, self._dcanvas)
+        self._show_and_focus()
+
+    def _radio_group(self, parent, title, key, options, current, wrap_w):
+        F = self.app.F
+        tk.Label(parent, text=title, font=F["small"], fg=MUTED, bg=CARD,
+                 anchor="w").pack(fill="x", pady=(S(2), 0))
+        var = tk.StringVar(value=current)
+        setattr(self, f"var_{key}", var)
+        group = tk.Frame(parent, bg=CARD)
+        group.pack(fill="x", pady=(S(3), S(8)))
+        for value, label, delta in options:
+            tk.Radiobutton(group, text=f"{label}（{delta:+d} ml）" if delta else f"{label}（基准）",
+                           value=value, variable=var, command=self.update_preview,
+                           font=F["tiny"], fg=INK, bg=CARD, selectcolor=TINT,
+                           activebackground=CARD, highlightthickness=0,
+                           anchor="w", justify="left", wraplength=wrap_w).pack(fill="x")
+
+    def _position_near_main(self):
+        app = self.app
+        sw, sh = app.win.winfo_screenwidth(), app.win.winfo_screenheight()
+        w = max(S(self.W), int(sw * 0.38))
+        h = min(max(S(self.H), int(sh * 0.82)), sh - S(40))
+        self._w = w
+        try:
+            mx, my = app.win.winfo_rootx(), app.win.winfo_rooty()
+            mw = app.win.winfo_width()
+            x = mx + mw + S(12)
+            if x + w > sw - S(8):
+                x = max(S(8), mx - w - S(12))
+            if x < S(8) or x + w > sw - S(8):
+                x = max(S(8), (sw - w) // 2)
+            y = max(S(8), min(my, sh - h - S(40)))
+        except tk.TclError:
+            x, y = max(S(8), (sw - w) // 2), max(S(8), (sh - h) // 2 - S(30))
+        self.top.geometry(f"{w}x{h}+{x}+{y}")
+
+    def _show_and_focus(self):
+        self.top.deiconify()
+        self.top.lift()
+        try:
+            self.top.focus_force()
+        except tk.TclError:
+            pass
+        try:
+            self.weight_entry.focus_set()
+            self.weight_entry.select_range(0, "end")
+        except tk.TclError:
+            pass
+
+    def _values(self) -> dict:
+        return {"sex": self.sex_var.get(),
+                "weight": _num(self.weight_var.get(), 55.0),
+                "activity": self.var_activity.get(),
+                "climate": self.var_climate.get(),
+                "body": self.var_body.get(),
+                "applied": bool(self.app.cfg.get("profile", {}).get("applied"))}
+
+    def update_preview(self):
+        advice = water_advice(self._values())
+        self.preview_ml.configure(text=f"{advice['ml']} ml")
+        self.preview_cups.configure(text=f"约 {advice['cups']} 杯 / 天")
+        detail = "；".join(
+            f"{name} {int(val):+d} ml" if i else f"{name} {int(val)} ml"
+            for i, (name, val, _desc) in enumerate(advice["parts"]))
+        if advice["clamped"]:
+            detail += f"（已收敛到 {ADVICE_ML_MIN}–{ADVICE_ML_MAX} ml）"
+        self.preview_detail.configure(text="计算：" + detail + "。")
+
+    def save(self):
+        values = normalize_profile(self._values())
+        self.app.cfg["profile"] = values
+        self.app._save()
+        self.close()
+        self.app.refresh_all()
+        Toast(self.app.win, "身体情况已保存，建议已更新；点「应用为目标」即可同步", "ok")
+
+    def focus(self):
+        self._show_and_focus()
+
+    def close(self):
+        try:
+            self.top.withdraw()
+        except tk.TclError:
+            pass
+        try:
+            self.top.destroy()
+        except tk.TclError:
+            pass
+        self.app.profile_dialog_closed()
 
 
 # ---------------------------------------------------------------- 提醒弹窗 --
@@ -2313,7 +3054,7 @@ class ReminderPopup:
         # 按钮区
         foot = tk.Frame(body, bg=CARD)
         foot.pack(side="bottom", fill="x", padx=S(22), pady=(S(8), S(14)))
-        hint = tk.Label(foot, fg="#A8B6C8", bg=CARD, font=F["tiny"], justify="center",
+        hint = tk.Label(foot, fg=P.FAINT, bg=CARD, font=F["tiny"], justify="center",
                         text=f"「稍后」{app.cfg['snooze_min']} 分钟后再提醒 · 双击也能稍后 · Esc 关闭")
         hint.pack(side="bottom", pady=(S(10), 0))
         btns = tk.Frame(foot, bg=CARD)
@@ -2685,6 +3426,155 @@ class TrayIcon:
         self.ok = False
 
 
+# ------------------------------------------------------------ 全局快捷键 --
+class GlobalHotkeys:
+    """Windows 全局热键：Ctrl+Alt+W 记一杯水 / Ctrl+Alt+P 暂停或继续。
+
+    用独立的隐藏窗口 + 消息循环线程接收 WM_HOTKEY，回调通过 app.after 投递
+    到主线程执行（不在后台线程碰 tkinter）。注册失败只降级、不影响主功能。
+    """
+
+    WM_HOTKEY = 0x0312
+    WM_EXIT = 0x0400 + 55
+    MOD_ALT, MOD_CONTROL, MOD_NOREPEAT = 0x0001, 0x0002, 0x4000
+    VK_W, VK_P = 0x57, 0x50
+    CLASS = "WaterReminderHotkey"
+
+    def __init__(self, app: "WaterReminderApp"):
+        self.app = app
+        self.ok = False
+        self.hwnd = None
+        self._alive = True
+        self._thread = None
+        self._wndproc_ref = None
+        self._error = ""
+        self._hinst = None
+        self._class_registered = False
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes as wt
+            self._ctypes, self._wt = ctypes, wt
+            ready = threading.Event()
+            self._thread = threading.Thread(target=self._run, args=(ready,), daemon=True,
+                                            name="global-hotkey")
+            self._thread.start()
+            ready.wait(3.0)
+            self.ok = bool(self.hwnd)
+        except Exception as exc:  # noqa: BLE001
+            self.ok = False
+            self._error = f"{type(exc).__name__}: {exc}"
+
+    def _wndproc(self, hwnd, msg, wparam, lparam):
+        ctypes = self._ctypes
+        try:
+            if msg == self.WM_HOTKEY:
+                action = self.app.drink if int(wparam) == 1 else self.app.toggle_run
+                self.app.after(0, action)
+            elif msg == self.WM_EXIT:
+                self._alive = False
+        except Exception:  # noqa: BLE001
+            pass
+        return ctypes.windll.user32.DefWindowProcW(ctypes.c_void_p(hwnd), msg,
+                                                   ctypes.c_size_t(wparam),
+                                                   ctypes.c_void_p(lparam))
+
+    def _run(self, ready):
+        ctypes = self._ctypes
+        wt = self._wt
+        WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_void_p, wt.HWND, wt.UINT, ctypes.c_size_t,
+                                     ctypes.c_size_t)
+
+        class WNDCLASSW(ctypes.Structure):
+            _fields_ = [("style", wt.UINT), ("lpfnWndProc", WNDPROC),
+                        ("cbClsExtra", ctypes.c_int), ("cbWndExtra", ctypes.c_int),
+                        ("hInstance", wt.HINSTANCE), ("hIcon", wt.HICON),
+                        ("hCursor", wt.HANDLE), ("hbrBackground", wt.HBRUSH),
+                        ("lpszMenuName", wt.LPCWSTR), ("lpszClassName", wt.LPCWSTR)]
+
+        class MSG(ctypes.Structure):
+            _fields_ = [("hwnd", wt.HWND), ("message", wt.UINT),
+                        ("wParam", ctypes.c_size_t), ("lParam", ctypes.c_size_t),
+                        ("time", wt.DWORD), ("pt", wt.POINT)]
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        registered = []
+        try:
+            wndproc = WNDPROC(self._wndproc)
+            self._wndproc_ref = wndproc
+            hinst = kernel32.GetModuleHandleW(None)
+            cls = WNDCLASSW()
+            cls.lpfnWndProc = wndproc
+            cls.hInstance = hinst
+            cls.lpszClassName = self.CLASS
+            if not user32.RegisterClassW(ctypes.byref(cls)):
+                raise OSError("RegisterClassW failed")
+            self._class_registered = True
+            self._hinst = hinst
+            hwnd = user32.CreateWindowExW(0, self.CLASS, self.CLASS, 0, 0, 0, 0, 0,
+                                          None, None, hinst, None)
+            if not hwnd:
+                raise OSError("CreateWindowExW failed")
+            self.hwnd = hwnd
+            mods = self.MOD_CONTROL | self.MOD_ALT | self.MOD_NOREPEAT
+            for hid, vk in ((1, self.VK_W), (2, self.VK_P)):
+                if user32.RegisterHotKey(hwnd, hid, mods, vk):
+                    registered.append(hid)
+        except Exception as exc:  # noqa: BLE001
+            self._error = f"{type(exc).__name__}: {exc}"
+            self.hwnd = None
+        ready.set()
+        if not self.hwnd:
+            return
+
+        msg = MSG()
+        while self._alive:
+            try:
+                while user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 0x0001):
+                    user32.TranslateMessage(ctypes.byref(msg))
+                    user32.DispatchMessageW(ctypes.byref(msg))
+            except Exception:  # noqa: BLE001
+                pass
+            time.sleep(0.05)
+        for hid in registered:
+            try:
+                user32.UnregisterHotKey(hwnd, hid)
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            user32.DestroyWindow(hwnd)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def close(self):
+        self._alive = False
+        if self.hwnd is not None:
+            try:
+                self._ctypes.windll.user32.PostMessageW(
+                    ctypes_void_p(self.hwnd), self.WM_EXIT, 0, 0)
+            except Exception:  # noqa: BLE001
+                pass
+        # 等消息循环线程真正退出后再反注册窗口类，否则下次开启 RegisterClassW 会失败
+        if self._thread is not None and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
+        if self._class_registered and self._hinst is not None:
+            try:
+                self._ctypes.windll.user32.UnregisterClassW(self.CLASS,
+                                                            ctypes_void_p(self._hinst))
+            except Exception:  # noqa: BLE001
+                pass
+            self._class_registered = False
+        self.hwnd = None
+        self.ok = False
+
+
+def ctypes_void_p(value):
+    import ctypes
+    return ctypes.c_void_p(value)
+
+
 # ---------------------------------------------------------------- 启动脚本 --
 
 def _pythonw_candidates() -> list:
@@ -2709,10 +3599,14 @@ def _pythonw_candidates() -> list:
 
 def launch_script() -> str:
     """无黑框启动脚本（用于开机自启）。"""
-    target = str(BASE_DIR)
-    script = f"{target}\\water_reminder.py"
+    def q(value) -> str:
+        # VBScript 字符串里的双引号要写成两个双引号
+        return str(value).replace('"', '""')
+
+    target = q(BASE_DIR)
+    script = q(Path(BASE_DIR) / "water_reminder.py")
     attempts = "\n".join(
-        f'    Err.Clear\n    sh.Run """{exe}"" ""{script}""", 0, False\n'
+        f'    Err.Clear\n    sh.Run """{q(exe)}"" ""{script}""", 0, False\n'
         f"    If Err.Number = 0 Then WScript.Quit 0\n"
         for exe in _pythonw_candidates())
     return (
@@ -2736,11 +3630,11 @@ def write_vbs(path: Path, content: str) -> None:
 def write_launch_files() -> None:
     try:
         write_vbs(BASE_DIR / "启动喝水提醒.vbs", launch_script())
-        (BASE_DIR / "启动喝水提醒.bat").write_text(
-            "@echo off\r\n"
-            "cd /d \"%~dp0\"\r\n"
-            "start \"\" pythonw water_reminder.py\r\n",
-            encoding="gbk", errors="replace")
+        # 用 bytes 写入，避免文本模式把 \r\n 再转成 \r\r\n
+        (BASE_DIR / "启动喝水提醒.bat").write_bytes(
+            ("@echo off\r\n"
+             "cd /d \"%~dp0\"\r\n"
+             "start \"\" pythonw water_reminder.py\r\n").encode("gbk", errors="replace"))
     except OSError:
         pass
 

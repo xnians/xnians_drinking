@@ -1,0 +1,20 @@
+/* pages/schedule/schedule.wxss */
+.head { text-align:center; margin:16rpx 0 24rpx; }
+.head .name { font-size:36rpx; font-weight:bold; color:#2b7bb8; }
+.head .status { font-size:24rpx; color:#7aa9c7; margin-top:6rpx; }
+
+.now-bar { background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; border-radius:24rpx; padding:24rpx 28rpx; font-size:28rpx; margin-bottom:24rpx; line-height:1.6; }
+
+.card { background:#fff; border-radius:28rpx; padding:28rpx; margin-bottom:24rpx; box-shadow:0 8rpx 28rpx rgba(74,168,224,.12); }
+.card-title { font-size:32rpx; font-weight:bold; color:#2b7bb8; margin-bottom:20rpx; }
+
+.slot { display:flex; align-items:center; gap:20rpx; padding:24rpx; border-radius:20rpx; border:1rpx solid #eef6fb; margin-bottom:18rpx; }
+.slot.now { border-color:#4aa8e0; background:#eaf4fb; }
+.time { width:190rpx; font-size:24rpx; color:#5a8aa8; flex-shrink:0; }
+.sc { flex:1; font-size:30rpx; color:#3a6b8c; }
+.sc b { display:block; }
+.sc small { color:#9cc3d8; font-size:24rpx; }
+.go { font-size:26rpx; color:#3d95d6; flex-shrink:0; }
+.tip-line { display:none; width:100%; margin-top:16rpx; padding:20rpx; background:#f4fbff; border-radius:16rpx; font-size:28rpx; color:#3a6b8c; line-height:1.6; }
+.slot.open .tip-line { display:block; }
+.tip-text { font-size:28rpx; color:#5a8aa8; line-height:1.8; }

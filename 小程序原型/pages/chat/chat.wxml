@@ -1,0 +1,21 @@
+<!-- pages/chat/chat.wxml —— AI 陪伴聊天页 -->
+<view class="chat-head">
+  <view class="name">{{roleName}}</view>
+  <view class="status">在线 · 随时陪你聊聊</view>
+</view>
+
+<scroll-view class="msgs" scroll-y scroll-into-view="{{scrollId}}">
+  <view class="msg ai" wx:for="{{messages}}" wx:key="id" id="msg{{index}}"
+        wx:if="{{item.from==='ai'}}">{{item.text}}</view>
+  <view class="msg me" wx:for="{{messages}}" wx:key="id" id="msg{{index}}"
+        wx:if="{{item.from==='me'}}">{{item.text}}</view>
+</scroll-view>
+
+<view class="quick">
+  <view class="q" wx:for="{{quick}}" wx:key="*this" data-q="{{item}}" bindtap="quickSend">{{item}}</view>
+</view>
+
+<view class="chat-input">
+  <input class="input" value="{{input}}" placeholder="和TA说点什么…" bindinput="onInput" confirm-type="send" bindconfirm="send" />
+  <button class="send" bindtap="send">发送</button>
+</view>

@@ -1,0 +1,28 @@
+/* pages/social/social.wxss */
+.head { text-align:center; margin:16rpx 0 24rpx; }
+.head .name { font-size:36rpx; font-weight:bold; color:#2b7bb8; }
+.head .status { font-size:24rpx; color:#7aa9c7; margin-top:6rpx; }
+
+.card { background:#fff; border-radius:28rpx; padding:28rpx; margin-bottom:24rpx; box-shadow:0 8rpx 28rpx rgba(74,168,224,.12); }
+.card-title { font-size:32rpx; font-weight:bold; color:#2b7bb8; margin-bottom:20rpx; }
+
+.rank-row { display:flex; align-items:center; gap:20rpx; padding:18rpx 12rpx; border-bottom:1rpx solid #eef6fb; font-size:30rpx; color:#3a6b8c; }
+.rank-row.me { background:#eaf4fb; border-radius:18rpx; font-weight:bold; color:#2b7bb8; }
+.medal { width:56rpx; text-align:center; }
+.rname { flex:1; }
+.rcnt { font-size:26rpx; color:#7aa9c7; }
+.rank-tip { font-size:26rpx; color:#5a8aa8; margin-top:16rpx; padding:14rpx 18rpx; background:#f4fbff; border-radius:16rpx; }
+
+.medals { display:flex; flex-wrap:wrap; gap:18rpx; }
+.medal-item { width:31%; text-align:center; padding:24rpx 8rpx; border-radius:20rpx; background:#f4fbff; font-size:26rpx; color:#9cc3d8; }
+.medal-item .mi { font-size:56rpx; display:block; margin-bottom:10rpx; }
+.medal-item small { display:block; font-size:22rpx; margin-top:8rpx; }
+.medal-item.got { background:#eaf4fb; color:#2b7bb8; }
+
+.feed { display:flex; flex-direction:column; gap:24rpx; }
+.feed-row { display:flex; gap:20rpx; font-size:28rpx; color:#3a6b8c; line-height:1.5; }
+.avatar { width:72rpx; height:72rpx; border-radius:50%; background:#cfe6f5; color:#2b7bb8; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0; }
+.avatar.me-av { background:#4aa8e0; color:#fff; }
+.fmeta { font-size:22rpx; color:#9cc3d8; margin-top:6rpx; }
+
+.ghost-btn { margin-top:24rpx; padding:24rpx; border:1rpx dashed #4aa8e0; background:#fff; color:#3d95d6; border-radius:24rpx; font-size:30rpx; }

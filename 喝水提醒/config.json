@@ -4,8 +4,18 @@
   "snooze_min": 5,
   "gentle": true,
   "autostart": false,
+  "theme": "light",
+  "hotkey": true,
   "kcal_per_day": 2000,
   "sugar_ratio": 10.0,
+  "profile": {
+    "sex": "female",
+    "weight": 55.0,
+    "activity": "light",
+    "climate": "mild",
+    "body": "normal",
+    "applied": false
+  },
   "quotes": [
     "工作再忙，也别忘了给自己补补水",
     "喝口水，休息 30 秒，效率更高哦",
@@ -17,18 +27,9 @@
     "再忙也要喝口水，这是对自己的温柔"
   ],
   "data": {
-    "log": {
-      "2026-11-21": {
-        "water": 0,
-        "sugar": 0.0,
-        "ml": 0.0,
-        "drinks": 0,
-        "drink_list": [],
-        "cup_log": []
-      }
-    },
+    "log": {},
     "water_fix": {},
-    "day": "2026-11-21",
+    "day": "2026-11-24",
     "done": 0,
     "skipped": 0,
     "events": [],

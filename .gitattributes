@@ -1,0 +1,8 @@
+# 统一换行：脚本文件必须 CRLF，否则 cmd / wscript 可能不认
+* text=auto
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.py  text eol=lf
+*.md  text eol=lf
+*.png binary
+*.jpg binary

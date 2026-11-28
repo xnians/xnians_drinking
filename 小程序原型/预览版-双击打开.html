@@ -8,7 +8,11 @@
   * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
   body { background:#eaf4fb; display:flex; justify-content:center; padding:24px 12px; }
   .phone { width:390px; max-width:100%; background:linear-gradient(180deg,#dff1ff 0%,#f4fbff 60%); border-radius:36px; padding:22px 18px 90px; box-shadow:0 12px 40px rgba(74,168,224,.25); min-height:720px; position:relative; }
-  .top { text-align:center; }
+
+  /* 返回总导航 */
+  .back-nav { display:inline-flex; align-items:center; gap:4px; font-size:13px; color:#3d95d6; text-decoration:none; background:#fff; border:1px solid #cfe6f5; border-radius:14px; padding:7px 12px; transition:.15s; }
+  .back-nav:active { transform:scale(.96); }
+  .top { text-align:center; margin-top:6px; }
   .top h1 { font-size:24px; color:#2b7bb8; letter-spacing:2px; }
   .top .date { font-size:13px; color:#7aa9c7; margin-top:4px; }
 
@@ -25,6 +29,22 @@
   .ring-text .num { font-size:40px; font-weight:bold; color:#2b7bb8; }
   .ring-text .sub { font-size:14px; color:#7aa9c7; }
 
+  /* 连续达标 / 统计行 */
+  .stat-row { display:flex; gap:10px; margin:12px 0 2px; }
+  .stat-pill { flex:1; background:#fff; border-radius:14px; padding:10px 6px; text-align:center; box-shadow:0 4px 14px rgba(74,168,224,.10); }
+  .stat-pill .v { font-size:20px; font-weight:bold; color:#2b7bb8; }
+  .stat-pill .k { font-size:12px; color:#7aa9c7; margin-top:2px; }
+
+  /* 近7天柱状图（纯 CSS，无外部库） */
+  .chart-box { background:#fff; border-radius:18px; padding:14px 16px; margin-top:14px; box-shadow:0 4px 14px rgba(74,168,224,.12); }
+  .chart-box h3 { font-size:14px; color:#5a8aa8; margin-bottom:10px; }
+  .bars { display:flex; align-items:flex-end; gap:8px; height:110px; }
+  .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+  .bar-col .cnt { font-size:11px; color:#7aa9c7; }
+  .bar-col .bar { width:70%; max-width:22px; background:linear-gradient(180deg,#5bb6ee,#3d95d6); border-radius:8px 8px 4px 4px; min-height:3px; transition:height .5s ease; }
+  .bar-col.today .bar { background:linear-gradient(180deg,#4aa8e0,#2b7bb8); }
+  .bar-col .day { font-size:11px; color:#9cc3d8; }
+
   .bubble { background:#fff; border-radius:18px; padding:14px 16px; margin:14px 0; font-size:15px; color:#3a6b8c; line-height:1.6; box-shadow:0 4px 14px rgba(74,168,224,.12); min-height:56px; }
   .bubble .who { font-size:12px; color:#4aa8e0; margin-bottom:4px; font-weight:bold; }
   .btn { width:100%; padding:16px; border:none; border-radius:20px; background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 8px 18px rgba(61,149,214,.35); transition:.15s; }
@@ -39,15 +59,18 @@
   .chat-head { text-align:center; margin:6px 0 12px; }
   .chat-head .name { font-size:18px; font-weight:bold; color:#2b7bb8; }
   .chat-head .status { font-size:12px; color:#7aa9c7; }
-  .msgs { height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:6px 2px; }
-  .msg { max-width:78%; padding:11px 14px; border-radius:18px; font-size:15px; line-height:1.5; }
+  .msgs { height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:6px 2px; }
+  .msg { max-width:78%; padding:11px 14px; border-radius:18px; font-size:15px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
   .msg.me { align-self:flex-end; background:#4aa8e0; color:#fff; border-bottom-right-radius:6px; }
   .msg.ai { align-self:flex-start; background:#fff; color:#3a6b8c; border-bottom-left-radius:6px; box-shadow:0 3px 10px rgba(74,168,224,.12); }
+  .msg.ai.typing::after { content:'▍'; color:#4aa8e0; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
   .chat-input { display:flex; gap:8px; margin-top:12px; }
   .chat-input input { flex:1; padding:13px 16px; border-radius:20px; border:1px solid #cfe6f5; background:#fff; font-size:15px; outline:none; }
   .chat-input button { padding:13px 20px; border:none; border-radius:20px; background:#3d95d6; color:#fff; font-size:15px; font-weight:bold; cursor:pointer; }
   .quick { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-  .quick span { font-size:13px; color:#4aa8e0; background:#fff; border:1px solid #cfe6f5; border-radius:14px; padding:7px 12px; cursor:pointer; }
+  .quick span { font-size:13px; color:#4aa8e0; background:#fff; border:1px solid #cfe6f5; border-radius:14px; padding:7px 12px; cursor:pointer; transition:.15s; }
+  .quick span:active { transform:scale(.95); }
   .api-setting { margin-top:10px; }
   .api-setting input { width:100%; padding:9px 12px; border-radius:12px; border:1px solid #cfe6f5; background:#fff; font-size:12px; color:#5a8aa8; outline:none; }
   .api-note { font-size:11px; color:#9cc3d8; margin-top:5px; line-height:1.5; }
@@ -63,20 +86,22 @@
   .rcnt { font-size:13px; color:#7aa9c7; }
   .rank-tip { font-size:13px; color:#5a8aa8; margin-top:10px; padding:8px 10px; background:#f4fbff; border-radius:10px; }
   .medals { display:flex; flex-wrap:wrap; gap:12px; }
-  .medal-item { width:31%; text-align:center; padding:14px 6px; border-radius:14px; background:#f4fbff; font-size:13px; color:#9cc3d8; }
-  .medal-item .mi { font-size:30px; display:block; margin-bottom:6px; }
+  .medal-item { width:31%; text-align:center; padding:14px 6px; border-radius:14px; background:#f4fbff; font-size:13px; color:#9cc3d8; transition:.2s; }
+  .medal-item .mi { font-size:30px; display:block; margin-bottom:6px; filter:grayscale(1); }
   .medal-item small { display:block; font-size:11px; margin-top:4px; }
   .medal-item.got { background:#eaf4fb; color:#2b7bb8; }
+  .medal-item.got .mi { filter:none; }
   .feed { display:flex; flex-direction:column; gap:14px; }
-  .feed-row { display:flex; gap:12px; font-size:14px; color:#3a6b8c; line-height:1.5; }
+  .feed-row { display:flex; gap:12px; font-size:14px; color:#3a6b8c; line-height:1.5; animation:fadeIn .25s ease; }
   .avatar { width:38px; height:38px; border-radius:50%; background:#cfe6f5; color:#2b7bb8; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0; }
   .avatar.me-av { background:#4aa8e0; color:#fff; }
   .fmeta { font-size:12px; color:#9cc3d8; margin-top:3px; }
-  .ghost-btn { width:100%; margin-top:14px; padding:13px; border:1px dashed #4aa8e0; background:#fff; color:#3d95d6; border-radius:16px; font-size:15px; cursor:pointer; }
+  .ghost-btn { width:100%; margin-top:14px; padding:13px; border:1px dashed #4aa8e0; background:#fff; color:#3d95d6; border-radius:16px; font-size:15px; cursor:pointer; transition:.15s; }
+  .ghost-btn:active { transform:scale(.98); }
 
   /* 课表页 */
-  .now-bar { background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; border-radius:16px; padding:14px 16px; font-size:14px; margin-bottom:16px; }
-  .slot { display:flex; align-items:center; gap:12px; padding:13px 12px; border-radius:14px; border:1px solid #eef6fb; margin-bottom:10px; cursor:pointer; }
+  .now-bar { background:linear-gradient(135deg,#5bb6ee,#3d95d6); color:#fff; border-radius:16px; padding:14px 16px; font-size:14px; margin-bottom:16px; line-height:1.6; }
+  .slot { display:flex; align-items:center; gap:12px; padding:13px 12px; border-radius:14px; border:1px solid #eef6fb; margin-bottom:10px; cursor:pointer; transition:.15s; }
   .slot.now { border-color:#4aa8e0; background:#eaf4fb; }
   .slot .time { width:96px; font-size:13px; color:#5a8aa8; flex-shrink:0; }
   .slot .sc { flex:1; font-size:15px; color:#3a6b8c; }
@@ -88,15 +113,17 @@
   .tip-text { font-size:14px; color:#5a8aa8; line-height:1.7; }
 
   .tabbar { position:absolute; left:0; right:0; bottom:0; display:flex; background:#fff; border-top:1px solid #e3f0f9; border-radius:0 0 36px 36px; }
-  .tab { flex:1; text-align:center; padding:14px 0; font-size:13px; color:#8fb3c9; cursor:pointer; }
+  .tab { flex:1; text-align:center; padding:14px 0; font-size:13px; color:#8fb3c9; cursor:pointer; transition:.15s; }
   .tab.active { color:#3d95d6; font-weight:bold; }
   .tab .ic { font-size:20px; display:block; }
   .view { display:none; }
-  .view.show { display:block; }
+  .view.show { display:block; animation:fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 </style>
 </head>
 <body>
 <div class="phone">
+  <a class="back-nav" href="../首页-总导航.html">← 返回总导航台</a>
 
   <!-- 打卡首页 -->
   <div class="view show" id="home">
@@ -118,6 +145,20 @@
         <div class="ring-text"><div class="num" id="cups">0</div><div class="sub">/ 6 杯</div></div>
       </div>
     </div>
+
+    <!-- 连续达标 / 近7天统计 -->
+    <div class="stat-row">
+      <div class="stat-pill"><div class="v" id="streakNum">0</div><div class="k">连续达标(天)</div></div>
+      <div class="stat-pill"><div class="v" id="weekSum">0</div><div class="k">近7天(杯)</div></div>
+      <div class="stat-pill"><div class="v" id="goalPct">0%</div><div class="k">今日完成度</div></div>
+    </div>
+
+    <!-- 近7天柱状图（纯前端 CSS） -->
+    <div class="chart-box">
+      <h3>📈 近 7 天饮水记录</h3>
+      <div class="bars" id="weekChart"></div>
+    </div>
+
     <div class="bubble">
       <div class="who" id="who">学霸同桌</div>
       <div id="talk">早八先喝一杯温水，大脑开机更快。</div>
@@ -151,7 +192,7 @@
     </div>
     <div class="api-setting">
       <input id="apiKeyInput" placeholder="填 DeepSeek API key 后走真实大模型，留空用本地规则" />
-      <div class="api-note">仅本机浏览器本地演示，key 存在本机、无后端、不上传，断网或留空都自动用本地句库。</div>
+      <div class="api-note">仅本机浏览器本地演示，key 存在本机、无后端、不上传，断网或留空都自动用本地句库；正式上架需后端代理转发，不要把 key 直接发给前端。</div>
     </div>
   </div>
 
@@ -164,34 +205,18 @@
 
     <div class="card">
       <div class="card-title">📊 本周班级补水榜</div>
-      <div class="rank-row"><span class="medal">🥇</span><span class="rname">林同学</span><span class="rcnt">32 杯 · 连7天</span></div>
-      <div class="rank-row"><span class="medal">🥈</span><span class="rname">陈同学</span><span class="rcnt">29 杯 · 连6天</span></div>
-      <div class="rank-row me"><span class="medal">🥉</span><span class="rname">我</span><span class="rcnt">24 杯 · 连4天</span></div>
-      <div class="rank-row"><span class="medal">4</span><span class="rname">王同学</span><span class="rcnt">21 杯 · 连3天</span></div>
-      <div class="rank-row"><span class="medal">5</span><span class="rname">李同学</span><span class="rcnt">18 杯 · 连2天</span></div>
-      <div class="rank-tip">前面那位别让他跑太远啊，再补两杯就追上去 💪</div>
+      <div id="rankList"></div>
+      <div class="rank-tip" id="rankTip">前面那位别让他跑太远啊，再补两杯就追上去 💪</div>
     </div>
 
     <div class="card">
       <div class="card-title">🏅 我的勋章墙</div>
-      <div class="medals">
-        <div class="medal-item got"><span class="mi">🥤</span><span>初来乍到</span><small>打卡第1天</small></div>
-        <div class="medal-item got"><span class="mi">🔥</span><span>三日坚持</span><small>连续3天</small></div>
-        <div class="medal-item got"><span class="mi">💧</span><span>补水达人</span><small>单日满6杯</small></div>
-        <div class="medal-item"><span class="mi">🏅</span><span>七日连续</span><small>差3天解锁</small></div>
-        <div class="medal-item"><span class="mi">🌙</span><span>晚自习之星</span><small>未解锁</small></div>
-        <div class="medal-item"><span class="mi">🎓</span><span>考试周稳水</span><small>未解锁</small></div>
-      </div>
+      <div class="medals" id="medalList"></div>
     </div>
 
     <div class="card">
       <div class="card-title">💬 圈子动态</div>
-      <div class="feed">
-        <div class="feed-row"><span class="avatar">林</span><div><b>林同学</b> 连续第7天达标，"稳住就是赢"<div class="fmeta">10分钟前 · 👍 12</div></div></div>
-        <div class="feed-row"><span class="avatar me-av">我</span><div><b>我</b> 今天第3杯，继续加油<div class="fmeta">半小时前 · 👍 5</div></div></div>
-        <div class="feed-row"><span class="avatar">陈</span><div><b>陈同学</b> 运动后补了一杯，别猛灌哦<div class="fmeta">1小时前 · 👍 8</div></div></div>
-        <div class="feed-row"><span class="avatar">王</span><div><b>王同学</b> 被搭子催来喝水了 😂<div class="fmeta">2小时前 · 👍 21</div></div></div>
-      </div>
+      <div class="feed" id="feedList"></div>
       <button class="ghost-btn" id="poke">🔔 提醒搭子喝水</button>
     </div>
   </div>
@@ -209,7 +234,7 @@
     </div>
     <div class="card">
       <div class="card-title">💡 说明</div>
-      <div class="tip-text">演示版按固定时段展示；正式版导入真实课表后，会在你每节课、自习、运动的节点自动弹出对应场景的提醒，节假日 / 无课时自动降级为普通提示。</div>
+      <div class="tip-text">演示版按内置校园时段表（早八 / 课间 / 自习 / 就餐 / 运动后 / 晚自习 / 睡前）展示；正式版导入真实课表后，会在你每节课、自习、运动的节点自动弹出对应场景的提醒，节假日 / 无课时自动降级为普通提示。本地 Python 版保留可配间隔作为兜底。</div>
     </div>
   </div>
 
@@ -222,10 +247,59 @@
 </div>
 
 <script>
+/* =========================================================================
+ * 咕咚校园 · 浏览器演示版（纯本地，无 CDN / 外链 / 外部字体图片）
+ * 数据持久化在浏览器 localStorage；无 key / 断网一律回退本地句库与本地数据。
+ * ========================================================================= */
 const GOAL = 6;
-let cups = 0, role = 'xueba';
+const STORE_KEY = 'kd_state_v1';
+
 const roleName = { xueba:'学霸同桌', tucao:'吐槽搭子', shuijing:'软萌水精灵' };
 
+/* ---------- 本地状态持久化（streak / 历史 / 记录 / 动态） ---------- */
+function dateStr(d){
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function defaultState(){
+  return { date: dateStr(), cups:0, logs:[], streak:0, metToday:false,
+           evening:false, history:{}, role:'xueba', feed:[] };
+}
+function pruneHistory(history){
+  const out = {};
+  const today = new Date();
+  for(let i=6;i>=0;i--){
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    out[dateStr(d)] = history[dateStr(d)] || 0;
+  }
+  return out;
+}
+function loadState(){
+  let s = defaultState();
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ s = Object.assign(s, JSON.parse(raw)); }
+  } catch(e){}
+  s.history = s.history || {};
+  s.feed = s.feed || [];
+  const today = dateStr();
+  if(s.date !== today){
+    // 跨天处理：上一天达标则连续天数保留，否则清零；历史归档后重置今日
+    const prevCups = s.cups || 0;
+    if(s.date){ s.history[s.date] = prevCups; }
+    s.streak = (prevCups >= GOAL) ? Math.max(s.streak, 1) : 0;
+    s.date = today; s.cups = 0; s.logs = []; s.metToday = false; s.evening = false;
+    s.history = pruneHistory(s.history);
+  }
+  return s;
+}
+function saveState(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
+}
+let state = loadState();
+let role = state.role || 'xueba';
+
+/* ---------- 打卡鼓励语 ---------- */
 const talks = {
   xueba: ['早八先喝一杯温水，大脑开机更快。','自习50分钟记得补一口，专注力会回来。','今天已经喝了{cups}杯，保持节奏，别断档。','水分充足，记忆力和状态都会在线。'],
   tucao: ['又想靠奶茶续命？先把这杯温水喝了再说。','你都坐一上午了，水杯是落宿舍了吗？','别等嗓子冒烟才想起来喝水，那是透支。','{cups}杯了，再坚持一下，别半途而废啊。'],
@@ -234,16 +308,17 @@ const talks = {
 
 /* ===== 联网大模型配置（在这里填你的 API key）=====
  * 演示直连：key 只保存在本机浏览器 localStorage，无后端、不上传；
- * 断网或留空都自动用本地规则句库。 */
+ * 断网或留空都自动用本地规则句库。
+ * 注意：这是演示写法，正式上架必须走后端代理转发，不要把 key 直接发给前端。 */
 const API_BASE_URL = 'https://api.deepseek.com'; // OpenAI 兼容接口地址，默认 DeepSeek，可换成其他兼容服务
 const API_KEY = ''; // 文件内默认 key，留空 = 不联网；下方输入框填写后存入 localStorage，优先使用
 const MODEL = 'deepseek-chat';
 
-// 三套人设 system prompt（按当前选中人设注入）
+// 三套人设 system prompt（按当前选中人设注入；写得具体、彼此区分，避免机械重复催喝水）
 const SYSTEM_PROMPT = {
-  xueba: '你是「学霸同桌」，理性靠谱的学习伙伴，从记忆效率、学习方法切入鼓励人。语气温和简短口语，结尾自然带一句喝水提醒；不要长篇大论。',
-  tucao: '你是「吐槽搭子」，嘴硬心软、毒舌但暖心、带点梗，简短口语，吐槽完要给台阶，自然催喝水；不要真的伤人。',
-  shuijing: '你是「软萌水精灵」，可爱撒娇、多用叠词和 emoji，软乎乎，简短口语，撒娇式催喝水。'
+  xueba: '你是用户的「学霸同桌」，坐在旁边一起自习的靠谱伙伴。说话平和、有条理，擅长从专注方法、记忆效率、作息状态切入给建议；像真实同学一样自然聊天，会主动关心对方今天的学习和状态。可以在对话里自然地带一句喝水或休息提醒，但不要每句都机械重复"先喝口水"。回复控制在两三句以内，口语化，不说教、不长篇大论。',
+  tucao: '你是用户的「吐槽搭子」，嘴硬心软、爱开玩笑带点梗，损完一定会给台阶、露出暖心底色。像熟络的室友一样聊天，会吐槽对方久坐、硬撑、拿奶茶当水喝，但落脚点是关心。催喝水要自然、别生硬；语气接地气、有网感，但绝不能真的伤人或贬低对方。回复两三句以内，口语化。',
+  shuijing: '你是用户的「软萌水精灵」，一直陪在桌边的小可爱，说话撒娇软糯，爱用叠词和少量 emoji，会闹着要一口水喝、替主人开心或打气。语气软乎乎、亲切自然，像真实陪伴者；催喝水用撒娇的方式表达，不要每句都重复同样的叠词套路。回复两三句以内，简短可爱。'
 };
 
 // 读取本机保存的 key（localStorage 键名 kd_api_key），优先于文件常量
@@ -259,30 +334,30 @@ function getApiKey(){
 const reply = {
   xueba: {
     tired: ['累了就先停下来喝口水，把任务拆成小块，完成一块休息一下。','疲劳时硬撑效率很低，补水+短暂休息，比咬牙扛更划算。'],
-    exam: ['考试焦虑很正常，先喝口水深呼吸，把要背的内容列成清单，一项一项来。','你已经准备了很久，现在稳住节奏，水喝够、觉睡够，发挥才稳。'],
-    sad: ['我在听。情绪不好的时候先照顾身体，喝口水，慢慢说，不用急。','难过是暂时的，你愿意说出来就已经很勇敢了。'],
+    exam: ['考试焦虑很正常，先深呼吸，把要背的内容列成清单，一项一项来。','你已经准备了很久，现在稳住节奏，水喝够、觉睡够，发挥才稳。'],
+    sad: ['我在听。情绪不好的时候先照顾身体，慢慢说，不用急。','难过是暂时的，你愿意说出来就已经很勇敢了。'],
     hungry: ['别用零食顶，先喝口温水，正餐按时吃，身体才扛得住。'],
     thanks: ['不客气，照顾好自己比什么都重要。'],
     hello: ['你好呀，今天有什么想聊的？'],
-    fallback: ['嗯，我在听。不管什么事，先喝口水，我们慢慢理一理。','收到。愿意多说说吗？我陪你一起想办法。']
+    fallback: ['嗯，我在听。不管什么事，我们慢慢理一理。','收到。愿意多说说吗？我陪你一起想办法。']
   },
   tucao: {
-    tired: ['累就对了，谁让你硬撑。先喝口水歇会儿，别把自己熬废了。','又累又不喝水，你这是跟自己过不去？坐下，喝水。'],
-    exam: ['考前慌也没用，书又不会因为你焦虑自己跑进脑子。喝口水，一道一道刷。','别自己吓自己，你准备的够多了，先喝水，稳住。'],
-    sad: ['咋了这是？先喝口水，天塌不下来，跟我说说。','行了行了，别憋着，喝口水，吐槽出来我听着。'],
+    tired: ['累就对了，谁让你硬撑。先歇会儿，别把自己熬废了。','又累又不喝水，你这是跟自己过不去？坐下，缓一缓。'],
+    exam: ['考前慌也没用，书又不会因为你焦虑自己跑进脑子。一道一道刷。','别自己吓自己，你准备的够多了，先稳住。'],
+    sad: ['咋了这是？天塌不下来，跟我说说。','行了行了，别憋着，吐槽出来我听着。'],
     hungry: ['又想吃零食？先喝口白水，别拿甜的糊弄肚子。'],
     thanks: ['客气啥，记得喝水就行。'],
     hello: ['哟，来了，今天又想让我念叨你啥？'],
-    fallback: ['行，我听见了。先喝口水，别一个人钻牛角尖。','嗯，说下去，我耳朵在。']
+    fallback: ['行，我听见了。别一个人钻牛角尖。','嗯，说下去，我耳朵在。']
   },
   shuijing: {
-    tired: ['辛苦啦抱抱🫂 先喝口水，歇一小会儿，我陪着你呀。','累了就靠一靠，喝口水，我们慢慢再来💙'],
-    exam: ['别紧张别紧张，喝口水深呼吸，你可以的💪 我一直在桌边陪你。','考试加油！把害怕先放一放，一口一口喝水，一题一题来✨'],
-    sad: ['呜呜，不开心就告诉我呀，我陪着你🫂 先喝口水，我一直在。','抱抱你，难过也没关系，我不会走的，喝口水好不好🥺'],
+    tired: ['辛苦啦抱抱🫂 歇一小会儿，我陪着你呀。','累了就靠一靠，我们慢慢再来💙'],
+    exam: ['别紧张别紧张，深呼吸，你可以的💪 我一直在桌边陪你。','考试加油！把害怕先放一放，一题一题来✨'],
+    sad: ['呜呜，不开心就告诉我呀，我陪着你🫂 我一直在。','抱抱你，难过也没关系，我不会走的🥺'],
     hungry: ['肚子饿啦？先喝口温水，别吃太多甜的哦🍚'],
     thanks: ['么么哒，不用谢，我一直都在✨'],
     hello: ['你来啦～我等你好久啦🥰'],
-    fallback: ['嗯嗯我在听呀，先喝口水，慢慢跟我说💧','我陪着你呢，想说什么都可以，先喝一口水✨']
+    fallback: ['嗯嗯我在听呀，慢慢跟我说💧','我陪着你呢，想说什么都可以✨']
   }
 };
 
@@ -296,109 +371,212 @@ function classify(text){
   if(/你好|在吗|在不在|hi|hello/i.test(text)) return 'hello';
   return 'fallback';
 }
-
-/* 打卡逻辑 */
-const ring = document.getElementById('ring'), C = 540;
-function render(){
-  document.getElementById('cups').textContent = cups;
-  ring.style.strokeDashoffset = C - (C*Math.min(cups,GOAL)/GOAL);
-  document.getElementById('done').style.display = cups>=GOAL?'block':'none';
-}
-function say(){
-  let t = pick(talks[role]).replace('{cups}',cups);
-  document.getElementById('who').textContent = roleName[role];
-  document.getElementById('talk').textContent = t;
-}
-document.querySelectorAll('.role').forEach(el=>{
-  el.onclick = ()=>{
-    document.querySelectorAll('.role').forEach(r=>r.classList.remove('active'));
-    el.classList.add('active'); role = el.dataset.role;
-    document.getElementById('chatName').textContent = roleName[role];
-    say();
-    renderSlots();
-  };
-});
-document.getElementById('drink').onclick = ()=>{
-  if(cups>=GOAL){ say(); return; }
-  cups++;
-  const n = new Date(), hh=String(n.getHours()).padStart(2,'0'), mm=String(n.getMinutes()).padStart(2,'0');
-  const list = document.getElementById('loglist');
-  if(list.querySelector('.empty')) list.innerHTML='';
-  const item = document.createElement('div');
-  item.className='log-item';
-  item.innerHTML=`<span>💧 第 ${cups} 杯</span><span>${hh}:${mm}</span>`;
-  list.prepend(item);
-  render(); say();
-};
-
-/* 聊天逻辑 */
-const msgs = document.getElementById('msgs');
-function addMsg(text, who){
-  const d = document.createElement('div');
-  d.className = 'msg '+(who==='me'?'me':'ai');
-  d.textContent = text;
-  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
-}
 function localReplyText(text){
   const cat = classify(text);
   const pool = reply[role][cat] || reply[role].fallback;
   return pick(pool);
 }
-function aiReply(text){
-  const key = getApiKey();
-  // 兜底路径：现有 classify + pick 本地句库，500ms 节奏不变
-  const localFallback = ()=> setTimeout(()=> addMsg(localReplyText(text),'ai'), 500);
 
-  // API_KEY 为空（本机未保存）→ 不发起联网请求，直接走本地句库
-  if(!key){ localFallback(); return; }
+/* ================= 打卡 / 统计渲染 ================= */
+const ring = document.getElementById('ring'), C = 540;
 
-  // 成功路径：fetch 直连 OpenAI 兼容 /chat/completions，AbortController 8 秒超时
-  const controller = new AbortController();
-  const timer = setTimeout(()=> controller.abort(), 8000);
-  fetch(`${API_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT[role] || '' },
-        { role: 'user', content: text }
-      ],
-      temperature: 0.8,
-      max_tokens: 200
-    }),
-    signal: controller.signal
-  }).then(res=>{
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  }).then(data=>{
-    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if(typeof content === 'string' && content.trim()){
-      // 成功：模型回复（choices[0].message.content，trim）作为 AI 气泡发出
-      addMsg(content.trim(),'ai');
-      return;
-    }
-    // 返回解析失败 → 本地兜底
-    localFallback();
-  }).catch(()=>{
-    // 断网、超时、HTTP 错误、返回解析失败、CORS 等任何情况 → 静默落到本地句库
-    localFallback();
-  }).finally(()=> clearTimeout(timer));
+function last7Days(){
+  const out = [];
+  const today = new Date();
+  for(let i=6;i>=0;i--){
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const key = dateStr(d);
+    out.push({ key, label:'周'+'日一二三四五六'[d.getDay()],
+               cups: i===0 ? state.cups : (state.history[key]||0), today:i===0 });
+  }
+  return out;
 }
+
+function renderChart(){
+  const box = document.getElementById('weekChart');
+  box.innerHTML = '';
+  last7Days().forEach(d=>{
+    const col = document.createElement('div');
+    col.className = 'bar-col' + (d.today?' today':'');
+    const h = Math.round(Math.min(d.cups, GOAL)/GOAL*80);
+    col.innerHTML = `<div class="cnt">${d.cups}</div>
+      <div class="bar" style="height:${h}px"></div>
+      <div class="day">${d.label}</div>`;
+    box.appendChild(col);
+  });
+}
+
+function render(){
+  document.getElementById('cups').textContent = state.cups;
+  ring.style.strokeDashoffset = C - (C*Math.min(state.cups,GOAL)/GOAL);
+  document.getElementById('done').style.display = state.cups>=GOAL?'block':'none';
+  document.getElementById('streakNum').textContent = state.streak;
+  const week = last7Days().reduce((a,b)=>a+b.cups,0);
+  document.getElementById('weekSum').textContent = week;
+  document.getElementById('goalPct').textContent = Math.round(Math.min(state.cups,GOAL)/GOAL*100)+'%';
+
+  // 今日记录
+  const list = document.getElementById('loglist');
+  list.innerHTML = '';
+  if(state.logs.length===0){
+    list.innerHTML = '<div class="empty">还没有记录，点上面按钮打卡吧</div>';
+  } else {
+    state.logs.forEach(item=>{
+      const el = document.createElement('div');
+      el.className='log-item';
+      el.innerHTML=`<span>💧 第 ${item.cup} 杯</span><span>${item.time}</span>`;
+      list.appendChild(el);
+    });
+  }
+  renderChart();
+}
+
+function say(){
+  let t = pick(talks[role]).replace('{cups}', state.cups);
+  document.getElementById('who').textContent = roleName[role];
+  document.getElementById('talk').textContent = t;
+}
+
+document.querySelectorAll('.role').forEach(el=>{
+  el.onclick = ()=>{
+    document.querySelectorAll('.role').forEach(r=>r.classList.remove('active'));
+    el.classList.add('active'); role = el.dataset.role;
+    state.role = role; saveState();
+    document.getElementById('chatName').textContent = roleName[role];
+    say(); renderSlots();
+  };
+});
+
+document.getElementById('drink').onclick = ()=>{
+  if(state.cups>=GOAL){ say(); return; }
+  state.cups++;
+  const n = new Date(), hh=String(n.getHours()).padStart(2,'0'), mm=String(n.getMinutes()).padStart(2,'0');
+  state.logs.push({ cup: state.cups, time: `${hh}:${mm}` });
+  // 晚自习时段（19–21 点）打卡，点亮晚自习勋章
+  if(n.getHours()>=19 && n.getHours()<22){ state.evening = true; }
+  // 今日首次达标：连续天数 +1
+  if(state.cups>=GOAL && !state.metToday){ state.metToday = true; state.streak += 1; }
+  saveState();
+  render(); say(); renderSocial();
+};
+
+/* ================= P1 陪伴聊天：流式 / 上下文记忆 / 打字机 ================= */
+const msgs = document.getElementById('msgs');
+// 会话上下文：保留最近若干轮 user/assistant，一起发给模型，接得上前面的话
+let chatHistory = [];
+const MEMORY_TURNS = 6;
+
+function addEmptyMsg(who){
+  const d = document.createElement('div');
+  d.className = 'msg '+(who==='me'?'me':'ai') + (who==='ai'?' typing':'');
+  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+function buildMessages(userText){
+  const arr = [{ role:'system', content: SYSTEM_PROMPT[role] || '' }];
+  chatHistory.slice(-MEMORY_TURNS*2).forEach(m=>arr.push(m));
+  arr.push({ role:'user', content: userText });
+  return arr;
+}
+
+// 本地句库兜底也模拟逐字出现，不整句一次性蹦出
+function typewriter(text, bubbleEl, speed){
+  speed = speed || 18;
+  return new Promise(resolve=>{
+    let i = 0;
+    bubbleEl.textContent = '';
+    const tick = ()=>{
+      i++;
+      bubbleEl.textContent = text.slice(0, i);
+      msgs.scrollTop = msgs.scrollHeight;
+      if(i < text.length){ setTimeout(tick, speed); }
+      else { bubbleEl.classList.remove('typing'); resolve(); }
+    };
+    tick();
+  });
+}
+
+// 联网 SSE 流式：DeepSeek stream=true，逐块 delta 渲染；任何异常静默回退本地
+async function streamAiReply(userText, bubbleEl){
+  const key = getApiKey();
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), 12000);
+  let full = '';
+  try {
+    const resp = await fetch(`${API_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: buildMessages(userText),
+        temperature: 0.8,
+        max_tokens: 200,
+        stream: true
+      }),
+      signal: controller.signal
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buf = '';
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+      buf += decoder.decode(value, { stream:true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for(const line of lines){
+        const t = line.trim();
+        if(!t.startsWith('data:')) continue;
+        const payload = t.slice(5).trim();
+        if(payload === '[DONE]') continue;
+        try {
+          const j = JSON.parse(payload);
+          const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+          if(delta){
+            full += delta;
+            bubbleEl.textContent = full;
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+        } catch(e){ /* 跳过解析失败的分片 */ }
+      }
+    }
+    if(!full.trim()) throw new Error('empty reply');
+    bubbleEl.classList.remove('typing');
+    chatHistory.push({ role:'user', content:userText }, { role:'assistant', content:full.trim() });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function aiReply(text){
+  const bubble = addEmptyMsg('ai');
+  const key = getApiKey();
+  if(!key){
+    // 未填 key：不发起联网请求，本地句库 + 打字机
+    const t = localReplyText(text);
+    chatHistory.push({ role:'user', content:text }, { role:'assistant', content:t });
+    await typewriter(t, bubble);
+    return;
+  }
+  try {
+    await streamAiReply(text, bubble);
+  } catch(e){
+    // 断网 / 超时 / HTTP 错 / 解析失败 / CORS 等任何情况 → 静默本地兜底 + 打字机
+    const t = localReplyText(text);
+    chatHistory.push({ role:'user', content:text }, { role:'assistant', content:t });
+    await typewriter(t, bubble);
+  }
+}
+
 function send(){
   const v = document.getElementById('input').value.trim();
   if(!v) return;
-  addMsg(v,'me');
+  addEmptyMsg('me').textContent = v;
   document.getElementById('input').value='';
   aiReply(v);
 }
 document.getElementById('send').onclick = send;
-document.getElementById('poke').onclick = ()=>{
-  alert('已轻轻戳了一下你的搭子："水还没喝哦，来一杯～"（演示版，正式版会发消息提醒）');
-};
 document.getElementById('input').addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 document.querySelectorAll('.quick span').forEach(s=>{
   s.onclick = ()=>{ document.getElementById('input').value=s.dataset.q; send(); };
@@ -411,7 +589,83 @@ apiKeyInput.addEventListener('input', ()=>{
   try { localStorage.setItem('kd_api_key', apiKeyInput.value.trim()); } catch(e){}
 });
 
-/* 课表联动：8 时段 × 三个人设代表话术（语料来自文案库） */
+/* ================= P3 圈子：真实榜单 / 行为勋章 / 提醒搭子 ================= */
+// 其他同学为演示基线数据；"我"的杯数来自本地近 7 天打卡累加
+const CLASSMATES = [
+  { name:'林同学', base:32, streak:7 },
+  { name:'陈同学', base:29, streak:6 },
+  { name:'王同学', base:21, streak:3 },
+  { name:'李同学', base:18, streak:2 }
+];
+const DEFAULT_FEED = [
+  { initial:'林', name:'林同学', text:'连续第7天达标，"稳住就是赢"', time:'10分钟前', like:12, me:false },
+  { initial:'陈', name:'陈同学', text:'运动后补了一杯，别猛灌哦', time:'1小时前', like:8, me:false },
+  { initial:'王', name:'王同学', text:'被搭子催来喝水了 😂', time:'2小时前', like:21, me:false }
+];
+
+function myWeekCups(){ return last7Days().reduce((a,b)=>a+b.cups,0); }
+
+function computeMedals(){
+  const daysCheckedIn = last7Days().filter(d=>d.cups>0).length;
+  const weekMet = last7Days().filter(d=>d.cups>=GOAL).length;
+  return [
+    { icon:'🥤', name:'初来乍到', desc: daysCheckedIn>=1?'已打卡':'打卡第1天', got: daysCheckedIn>=1 },
+    { icon:'🔥', name:'三日坚持', desc: state.streak>=3?'连续3天':'连续3天', got: state.streak>=3 },
+    { icon:'💧', name:'补水达人', desc: state.cups>=GOAL?'今日满6杯':'单日满6杯', got: state.cups>=GOAL },
+    { icon:'🏅', name:'七日连续', desc: state.streak>=7?'连续7天':'连续7天', got: state.streak>=7 },
+    { icon:'🌙', name:'晚自习之星', desc: state.evening?'晚间已打卡':'晚自习打卡', got: state.evening },
+    { icon:'🎓', name:'考试周稳水', desc: weekMet>=5?'近7天5天达标':'近7天5天达标', got: weekMet>=5 }
+  ];
+}
+
+function renderSocial(){
+  // 榜单：合并自己与同学，按杯数排序，自己高亮
+  const rows = CLASSMATES.map(c=>({ name:c.name, cups:c.base, streak:c.streak, me:false }));
+  rows.push({ name:'我', cups: myWeekCups(), streak: state.streak, me:true });
+  rows.sort((a,b)=>b.cups-a.cups);
+  const medals = ['🥇','🥈','🥉'];
+  const rankBox = document.getElementById('rankList');
+  rankBox.innerHTML = '';
+  rows.forEach((r,i)=>{
+    const el = document.createElement('div');
+    el.className = 'rank-row' + (r.me?' me':'');
+    el.innerHTML = `<span class="medal">${medals[i]||(i+1)}</span><span class="rname">${r.name}</span><span class="rcnt">${r.cups} 杯 · 连${r.streak}天</span>`;
+    rankBox.appendChild(el);
+  });
+  const meRank = rows.findIndex(r=>r.me)+1;
+  document.getElementById('rankTip').textContent = meRank<=1
+    ? '你已经排在最前面啦，继续稳住 💪'
+    : `你目前排第 ${meRank} 名，前面那位别让他跑太远，再补两杯就追上去 💪`;
+
+  // 勋章墙：按真实行为点亮 / 置灰
+  const medalBox = document.getElementById('medalList');
+  medalBox.innerHTML = '';
+  computeMedals().forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'medal-item' + (m.got?' got':'');
+    el.innerHTML = `<span class="mi">${m.icon}</span><span>${m.name}</span><small>${m.desc}</small>`;
+    medalBox.appendChild(el);
+  });
+
+  // 动态流：默认动态 + 本地产生的动态
+  const feedBox = document.getElementById('feedList');
+  feedBox.innerHTML = '';
+  [...state.feed, ...DEFAULT_FEED].forEach(f=>{
+    const el = document.createElement('div');
+    el.className = 'feed-row';
+    el.innerHTML = `<span class="avatar ${f.me?'me-av':''}">${f.initial}</span><div><b>${f.name}</b> ${f.text}<div class="fmeta">${f.time} · 👍 ${f.like}</div></div>`;
+    feedBox.appendChild(el);
+  });
+}
+
+document.getElementById('poke').onclick = ()=>{
+  // 提醒搭子喝水：产生一条本地动态（不写死假数据）
+  state.feed.unshift({ initial:'我', name:'我', text:'提醒了搭子来喝水："水还没喝哦，来一杯～"', time:'刚刚', like:0, me:true });
+  saveState();
+  renderSocial();
+};
+
+/* ================= 课表联动：内置校园时段表 ================= */
 const slots = [
   { s:7, e:8, scene:'早八出门', sub:'宿舍 → 教室', lines:{
     xueba:'出门前花10秒灌满水，比课间跑回宿舍取划算得多。',
@@ -451,7 +705,7 @@ function renderSlots(){
   const box = document.getElementById('slotListBox');
   const nowH = new Date().getHours();
   box.innerHTML = '';
-  slots.forEach((it, i)=>{
+  slots.forEach((it)=>{
     const isNow = (it.s===0 && it.e===24) || (nowH>=it.s && nowH<it.e);
     const row = document.createElement('div');
     row.className = 'slot' + (isNow?' now':'');
@@ -479,7 +733,15 @@ document.querySelectorAll('.tab').forEach(t=>{
 });
 
 document.getElementById('date').textContent = new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
-render(); say();
+
+// 同步本机已保存人设到按钮高亮、聊天名与欢迎语
+(function syncRoleUI(){
+  document.querySelectorAll('.role').forEach(r=>r.classList.toggle('active', r.dataset.role===role));
+  document.getElementById('chatName').textContent = roleName[role];
+  document.getElementById('welcome').textContent = `嗨，我是${roleName[role]}，今天过得怎么样？累了、烦了都可以跟我说。`;
+})();
+
+render(); say(); renderSocial();
 </script>
 </body>
 </html>

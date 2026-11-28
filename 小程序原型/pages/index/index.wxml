@@ -27,6 +27,25 @@
     <view class="bar-fg" style="width:{{percent}}%"></view>
   </view>
 
+  <!-- 连续达标 / 近7天统计 -->
+  <view class="stat-row">
+    <view class="stat-pill"><view class="v">{{streak}}</view><view class="k">连续达标(天)</view></view>
+    <view class="stat-pill"><view class="v">{{weekSum}}</view><view class="k">近7天(杯)</view></view>
+    <view class="stat-pill"><view class="v">{{percent}}%</view><view class="k">今日完成度</view></view>
+  </view>
+
+  <!-- 近7天柱状图（纯前端 view） -->
+  <view class="chart-box">
+    <view class="chart-title">📈 近 7 天饮水记录</view>
+    <view class="bars">
+      <view class="bar-col {{item.today?'today':''}}" wx:for="{{weekList}}" wx:key="label">
+        <view class="cnt">{{item.cups}}</view>
+        <view class="bar" style="height:{{item.height}}px"></view>
+        <view class="day">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 人设气泡 -->
   <view class="bubble">
     <view class="who">{{roleName}}</view>

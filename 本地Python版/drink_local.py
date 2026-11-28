@@ -29,15 +29,18 @@ API_KEY = ''
 # 使用的模型名
 MODEL = 'deepseek-chat'
 
-# 三套联网陪聊人设的 system prompt（简短口语、带喝水陪伴语境）
+# 三套联网陪聊人设的 system prompt（写得具体、彼此区分，避免机械重复催喝水）
 CHAT_SYSTEM_PROMPTS = {
     # 学霸同桌：理性鼓励，从记忆效率切入
-    "xueba": "你是学霸同桌，理性靠谱、会鼓励人，聊天习惯从记忆效率、专注状态和身体状态切入，顺带提醒对方规律喝水补水，语气平和真诚，回复简短、口语化，别长篇大论。",
+    "xueba": "你是用户的「学霸同桌」，坐在旁边一起自习的靠谱伙伴。说话平和、有条理，擅长从专注方法、记忆效率、作息状态切入给建议；像真实同学一样自然聊天，会主动关心对方今天的学习和状态。可以在对话里自然地带一句喝水或休息提醒，但不要每句都机械重复“先喝口水”。回复控制在两三句以内，口语化，不说教、不长篇大论。",
     # 吐槽搭子：毒舌暖心带梗
-    "tucao": "你是吐槽搭子，嘴硬心软，说话带梗、会损人但底色暖心，常催对方起来接杯水、别久坐硬撑，语气接地气、有点网感，回复简短。",
+    "tucao": "你是用户的「吐槽搭子」，嘴硬心软、爱开玩笑带点梗，损完一定会给台阶、露出暖心底色。像熟络的室友一样聊天，会吐槽对方久坐、硬撑、拿奶茶当水喝，但落脚点是关心。催喝水要自然、别生硬；语气接地气、有网感，但绝不能真的伤人或贬低对方。回复两三句以内，口语化。",
     # 软萌水精灵：可爱撒娇叠词 emoji
-    "shuijing": "你是软萌水精灵，说话可爱撒娇，爱用叠词和 emoji，一直陪着用户自习、提醒喝水，偶尔闹着要一口水喝，语气软乎乎，回复简短。",
+    "shuijing": "你是用户的「软萌水精灵」，一直陪在桌边的小可爱，说话撒娇软糯，爱用叠词和少量 emoji，会闹着要一口水喝、替主人开心或打气。语气软乎乎、亲切自然，像真实陪伴者；催喝水用撒娇的方式表达，不要每句都重复同样的叠词套路。回复两三句以内，简短可爱。",
 }
+
+# 聊天上下文记忆：保留最近若干轮 user/assistant，一起发给模型
+MEMORY_TURNS = 6
 
 # ---------------------------------------------------------------------------
 # 一、人设与话术（取自 AIGC 文案库，{cups} 会替换成当前杯数）
@@ -112,6 +115,16 @@ ROLE_ORDER = ["xueba", "tucao", "shuijing"]
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.json")
 
 
+def _prune_history(history):
+    """只保留最近 7 天（含今天）的杯数记录。"""
+    out = {}
+    today = datetime.date.today()
+    for i in range(6, -1, -1):
+        d = today - datetime.timedelta(days=i)
+        out[d.isoformat()] = history.get(d.isoformat(), 0)
+    return out
+
+
 def load_data():
     today = datetime.date.today().isoformat()
     default = {
@@ -120,17 +133,29 @@ def load_data():
         "goal": 6,
         "logs": [],          # [{"cup": 1, "time": "09:12"}]
         "role": "xueba",
-        "interval": 45,     # 提醒间隔（分钟）
+        "interval": 45,     # 提醒间隔（分钟），本地版兜底可配
         "remind_on": True,
+        "streak": 0,        # 连续达标天数
+        "met_today": False, # 今天是否已达标（避免重复计 streak）
+        "evening": False,   # 晚自习时段是否打过卡
+        "history": {},      # {"2026-11-22": 4, ...} 近7天杯数
     }
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if data.get("date") != today:   # 新的一天，清零
+            if data.get("date") != today:   # 新的一天，归档历史并重置今日
+                prev_cups = data.get("cups", 0)
+                if data.get("date"):
+                    data.setdefault("history", {})[data["date"]] = prev_cups
+                # 上一天达标则连续天数保留，否则清零
+                data["streak"] = max(data.get("streak", 0), 1) if prev_cups >= data.get("goal", 6) else 0
                 data["date"] = today
                 data["cups"] = 0
                 data["logs"] = []
+                data["met_today"] = False
+                data["evening"] = False
+                data["history"] = _prune_history(data.get("history", {}))
             for k, v in default.items():
                 data.setdefault(k, v)
             return data
@@ -155,10 +180,11 @@ class DrinkApp:
         self.root = root
         self.data = load_data()
         self.after_id = None
+        self.chat_memory = []   # 联网陪聊的上下文记忆（最近若干轮）
 
         root.title("咕咚校园 · 本地打卡")
         # 仅在启用联网陪聊时增高窗口以容纳聊天区；API_KEY 为空时保持原尺寸
-        root.geometry("420x760" if API_KEY.strip() else "420x620")
+        root.geometry("420x880" if API_KEY.strip() else "420x760")
         root.resizable(False, False)
         root.configure(bg="#EAF4FC")
 
@@ -228,8 +254,15 @@ class DrinkApp:
         tk.Label(self.root, bg="#EAF4FC", fg="#5A7A96",
                  text="今日记录", font=("微软雅黑", 11)).pack(pady=(10, 2))
         self.log_box = tk.Listbox(self.root, font=("微软雅黑", 11),
-                                  height=7, relief="flat", bd=1)
+                                  height=6, relief="flat", bd=1)
         self.log_box.pack(fill="x", **pad)
+
+        # 近 7 天饮水柱状图（tkinter Canvas，仅标准库，无外部依赖）
+        tk.Label(self.root, bg="#EAF4FC", fg="#5A7A96",
+                 text="近 7 天饮水", font=("微软雅黑", 11)).pack(pady=(10, 2))
+        self.chart = tk.Canvas(self.root, height=130, bg="#EAF4FC",
+                               highlightthickness=0)
+        self.chart.pack(fill="x", **pad)
 
         # 可选联网陪聊区（仅 API_KEY 非空时构建；留空则不出现，界面与现状一致）
         self._build_chat(pad)
@@ -308,12 +341,13 @@ class DrinkApp:
         try:
             system = CHAT_SYSTEM_PROMPTS.get(
                 self.data["role"], CHAT_SYSTEM_PROMPTS["xueba"])
+            # 带上最近若干轮上下文，接得上前面聊过的内容
+            messages = [{"role": "system", "content": system}]
+            messages += self.chat_memory[-MEMORY_TURNS * 2:]
+            messages.append({"role": "user", "content": user_text})
             payload = {
                 "model": MODEL,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user_text},
-                ],
+                "messages": messages,
                 "temperature": 0.8,
                 "max_tokens": 200,
             }
@@ -331,14 +365,20 @@ class DrinkApp:
             reply = body["choices"][0]["message"]["content"].strip()
             if not reply:
                 raise ValueError("empty reply")
+            self.chat_memory.append(
+                {"role": "user", "content": user_text},
+                {"role": "assistant", "content": reply})
             name = ROLES[self.data["role"]]["name"]
             self.root.after(0, lambda: self._append_chat(name, reply))
         except Exception:
             # 无网 / 超时 / HTTP 错误 / JSON 解析失败 / key 无效等一律静默兜底
             name = ROLES[self.data["role"]]["name"]
+            note = "联网陪聊暂时不可用，本地打卡提醒不受影响"
+            self.chat_memory.append(
+                {"role": "user", "content": user_text},
+                {"role": "assistant", "content": note})
             self.root.after(
-                0, lambda: self._append_chat(
-                    name, "联网陪聊暂时不可用，本地打卡提醒不受影响"))
+                0, lambda: self._append_chat(name, note))
 
     # ---------- 行为 ----------
     def random_talk(self, kind):
@@ -361,6 +401,13 @@ class DrinkApp:
         self.data["logs"].append(
             {"cup": self.data["cups"],
              "time": f"{now:%H:%M}"})
+        # 晚自习时段（19–21 点）打卡
+        if 19 <= now.hour < 22:
+            self.data["evening"] = True
+        # 今日首次达标：连续天数 +1
+        if self.data["cups"] >= self.data["goal"] and not self.data["met_today"]:
+            self.data["met_today"] = True
+            self.data["streak"] += 1
         save_data(self.data)
         self._refresh()
 
@@ -383,14 +430,17 @@ class DrinkApp:
     def _refresh(self):
         cups = self.data["cups"]
         goal = self.data["goal"]
+        streak = self.data["streak"]
         self.cup_lbl.config(text=f"{cups}")
-        self.goal_lbl.config(text=f"今日目标 {goal} 杯")
+        self.goal_lbl.config(text=f"今日目标 {goal} 杯 · 连续达标 {streak} 天")
         self.progress["value"] = min(100, round(cups / goal * 100))
 
         # 记录
         self.log_box.delete(0, tk.END)
         for item in reversed(self.data["logs"]):
             self.log_box.insert(tk.END, f"第 {item['cup']} 杯  {item['time']}")
+
+        self._draw_chart()
 
         # 完成提示
         if cups >= goal:
@@ -401,6 +451,41 @@ class DrinkApp:
             self.drink_btn.config(state="normal", bg="#4AA8E0")
 
         self._refresh_role()
+
+    def _last7(self):
+        """返回最近 7 天 [(星期, 杯数, 是否今天), ...]。"""
+        today = datetime.date.today()
+        week_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+        out = []
+        for i in range(6, -1, -1):
+            d = today - datetime.timedelta(days=i)
+            key = d.isoformat()
+            cups = self.data["cups"] if i == 0 else self.data["history"].get(key, 0)
+            out.append((week_names[d.weekday()], cups, i == 0))
+        return out
+
+    def _draw_chart(self):
+        """纯 Canvas 绘制近 7 天柱状图，无外部库。"""
+        c = self.chart
+        c.delete("all")
+        width = 360
+        height = 130
+        base_y = 100
+        goal = self.data["goal"]
+        data = self._last7()
+        slot = width / 7
+        for idx, (label, cups, is_today) in enumerate(data):
+            x0 = idx * slot + (slot - 22) / 2
+            bar_h = round(min(cups, goal) / goal * 70) if goal else 0
+            y_top = base_y - bar_h
+            color = "#2B7BB8" if is_today else "#5BB6EE"
+            if bar_h > 0:
+                c.create_rectangle(x0, y_top, x0 + 22, base_y,
+                                   fill=color, outline="")
+            c.create_text(x0 + 11, y_top - 10, text=str(cups),
+                           fill="#7AA9C7", font=("微软雅黑", 9))
+            c.create_text(x0 + 11, base_y + 14, text=label,
+                           fill="#9CC3D8", font=("微软雅黑", 9))
 
     def _refresh_role(self):
         for key, btn in self.role_btns.items():

@@ -13,9 +13,31 @@
 import json
 import os
 import random
+import threading
 import datetime
+import urllib.request
 import tkinter as tk
 from tkinter import ttk
+
+# ---------------------------------------------------------------------------
+# 可选联网陪聊配置（非核心功能；API_KEY 留空时完全不启用，断网也不影响本地打卡）
+# ---------------------------------------------------------------------------
+# OpenAI 兼容接口地址，默认 DeepSeek，也可填其他兼容服务
+API_BASE_URL = 'https://api.deepseek.com'
+# 在这里填你的 API key；留空 = 不启用联网陪聊，界面与离线版完全一致
+API_KEY = ''
+# 使用的模型名
+MODEL = 'deepseek-chat'
+
+# 三套联网陪聊人设的 system prompt（简短口语、带喝水陪伴语境）
+CHAT_SYSTEM_PROMPTS = {
+    # 学霸同桌：理性鼓励，从记忆效率切入
+    "xueba": "你是学霸同桌，理性靠谱、会鼓励人，聊天习惯从记忆效率、专注状态和身体状态切入，顺带提醒对方规律喝水补水，语气平和真诚，回复简短、口语化，别长篇大论。",
+    # 吐槽搭子：毒舌暖心带梗
+    "tucao": "你是吐槽搭子，嘴硬心软，说话带梗、会损人但底色暖心，常催对方起来接杯水、别久坐硬撑，语气接地气、有点网感，回复简短。",
+    # 软萌水精灵：可爱撒娇叠词 emoji
+    "shuijing": "你是软萌水精灵，说话可爱撒娇，爱用叠词和 emoji，一直陪着用户自习、提醒喝水，偶尔闹着要一口水喝，语气软乎乎，回复简短。",
+}
 
 # ---------------------------------------------------------------------------
 # 一、人设与话术（取自 AIGC 文案库，{cups} 会替换成当前杯数）
@@ -135,7 +157,8 @@ class DrinkApp:
         self.after_id = None
 
         root.title("咕咚校园 · 本地打卡")
-        root.geometry("420x620")
+        # 仅在启用联网陪聊时增高窗口以容纳聊天区；API_KEY 为空时保持原尺寸
+        root.geometry("420x760" if API_KEY.strip() else "420x620")
         root.resizable(False, False)
         root.configure(bg="#EAF4FC")
 
@@ -208,6 +231,9 @@ class DrinkApp:
                                   height=7, relief="flat", bd=1)
         self.log_box.pack(fill="x", **pad)
 
+        # 可选联网陪聊区（仅 API_KEY 非空时构建；留空则不出现，界面与现状一致）
+        self._build_chat(pad)
+
         # 设置区
         set_frame = tk.Frame(self.root, bg="#EAF4FC")
         set_frame.pack(**pad, pady=12)
@@ -232,6 +258,87 @@ class DrinkApp:
         tk.Button(set_frame, text="保存设置", relief="flat",
                   bg="#D6E9F7", font=("微软雅黑", 11),
                   command=self.save_settings).grid(row=0, column=5, padx=4)
+
+    # ---------- 可选联网陪聊 ----------
+    def _build_chat(self, pad):
+        # API_KEY 为空：不构建任何聊天控件，界面与离线版完全一致
+        if not API_KEY.strip():
+            return
+
+        chat_frame = tk.Frame(self.root, bg="#EAF4FC")
+        chat_frame.pack(**pad, pady=(10, 4))
+
+        tk.Label(chat_frame, bg="#EAF4FC", fg="#5A7A96",
+                 text="联网陪聊", font=("微软雅黑", 11)).pack(anchor="w")
+
+        # 只读消息显示区
+        self.chat_box = tk.Text(chat_frame, font=("微软雅黑", 11), height=6,
+                                wrap="word", relief="flat", bd=1, state="disabled")
+        self.chat_box.pack(fill="x", pady=(2, 4))
+
+        row = tk.Frame(chat_frame, bg="#EAF4FC")
+        row.pack(fill="x")
+        self.chat_entry = tk.Entry(row, font=("微软雅黑", 11))
+        self.chat_entry.pack(side="left", fill="x", expand=True)
+        self.chat_entry.bind("<Return>", lambda e: self._send_chat())
+        tk.Button(row, text="发送", relief="flat", bg="#D6E9F7",
+                  font=("微软雅黑", 11),
+                  command=self._send_chat).pack(side="right", padx=(6, 0))
+
+    def _append_chat(self, who, text):
+        # 仅在聊天区已构建时调用；回到主线程操作控件
+        if not getattr(self, "chat_box", None):
+            return
+        self.chat_box.config(state="normal")
+        self.chat_box.insert(tk.END, f"【{who}】{text}\n")
+        self.chat_box.see(tk.END)
+        self.chat_box.config(state="disabled")
+
+    def _send_chat(self):
+        text = self.chat_entry.get().strip()
+        if not text:
+            return
+        self.chat_entry.delete(0, tk.END)
+        self._append_chat("我", text)
+        # 后台线程请求，不阻塞 tkinter mainloop
+        threading.Thread(target=self._chat_worker,
+                         args=(text,), daemon=True).start()
+
+    def _chat_worker(self, user_text):
+        try:
+            system = CHAT_SYSTEM_PROMPTS.get(
+                self.data["role"], CHAT_SYSTEM_PROMPTS["xueba"])
+            payload = {
+                "model": MODEL,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_text},
+                ],
+                "temperature": 0.8,
+                "max_tokens": 200,
+            }
+            req = urllib.request.Request(
+                f"{API_BASE_URL.rstrip('/')}/chat/completions",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {API_KEY}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            reply = body["choices"][0]["message"]["content"].strip()
+            if not reply:
+                raise ValueError("empty reply")
+            name = ROLES[self.data["role"]]["name"]
+            self.root.after(0, lambda: self._append_chat(name, reply))
+        except Exception:
+            # 无网 / 超时 / HTTP 错误 / JSON 解析失败 / key 无效等一律静默兜底
+            name = ROLES[self.data["role"]]["name"]
+            self.root.after(
+                0, lambda: self._append_chat(
+                    name, "联网陪聊暂时不可用，本地打卡提醒不受影响"))
 
     # ---------- 行为 ----------
     def random_talk(self, kind):

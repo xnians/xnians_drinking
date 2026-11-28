@@ -48,6 +48,9 @@
   .chat-input button { padding:13px 20px; border:none; border-radius:20px; background:#3d95d6; color:#fff; font-size:15px; font-weight:bold; cursor:pointer; }
   .quick { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   .quick span { font-size:13px; color:#4aa8e0; background:#fff; border:1px solid #cfe6f5; border-radius:14px; padding:7px 12px; cursor:pointer; }
+  .api-setting { margin-top:10px; }
+  .api-setting input { width:100%; padding:9px 12px; border-radius:12px; border:1px solid #cfe6f5; background:#fff; font-size:12px; color:#5a8aa8; outline:none; }
+  .api-note { font-size:11px; color:#9cc3d8; margin-top:5px; line-height:1.5; }
 
   /* 社交页 */
   .card { background:#fff; border-radius:18px; padding:16px; margin-bottom:16px; box-shadow:0 4px 14px rgba(74,168,224,.12); }
@@ -146,6 +149,10 @@
       <input id="input" placeholder="和TA说点什么…" />
       <button id="send">发送</button>
     </div>
+    <div class="api-setting">
+      <input id="apiKeyInput" placeholder="填 DeepSeek API key 后走真实大模型，留空用本地规则" />
+      <div class="api-note">仅本机浏览器本地演示，key 存在本机、无后端、不上传，断网或留空都自动用本地句库。</div>
+    </div>
   </div>
 
   <!-- 校园社交页 -->
@@ -224,6 +231,29 @@ const talks = {
   tucao: ['又想靠奶茶续命？先把这杯温水喝了再说。','你都坐一上午了，水杯是落宿舍了吗？','别等嗓子冒烟才想起来喝水，那是透支。','{cups}杯了，再坚持一下，别半途而废啊。'],
   shuijing: ['咕嘟咕嘟～喝一口水，我就变圆一点点🥺','宝宝，水杯就在手边，抬抬手就喝啦💧','已经{cups}杯啦，你对我真好，么么哒✨','不喝水我会蔫掉的，快喂我一口嘛～']
 };
+
+/* ===== 联网大模型配置（在这里填你的 API key）=====
+ * 演示直连：key 只保存在本机浏览器 localStorage，无后端、不上传；
+ * 断网或留空都自动用本地规则句库。 */
+const API_BASE_URL = 'https://api.deepseek.com'; // OpenAI 兼容接口地址，默认 DeepSeek，可换成其他兼容服务
+const API_KEY = ''; // 文件内默认 key，留空 = 不联网；下方输入框填写后存入 localStorage，优先使用
+const MODEL = 'deepseek-chat';
+
+// 三套人设 system prompt（按当前选中人设注入）
+const SYSTEM_PROMPT = {
+  xueba: '你是「学霸同桌」，理性靠谱的学习伙伴，从记忆效率、学习方法切入鼓励人。语气温和简短口语，结尾自然带一句喝水提醒；不要长篇大论。',
+  tucao: '你是「吐槽搭子」，嘴硬心软、毒舌但暖心、带点梗，简短口语，吐槽完要给台阶，自然催喝水；不要真的伤人。',
+  shuijing: '你是「软萌水精灵」，可爱撒娇、多用叠词和 emoji，软乎乎，简短口语，撒娇式催喝水。'
+};
+
+// 读取本机保存的 key（localStorage 键名 kd_api_key），优先于文件常量
+function getApiKey(){
+  try {
+    const saved = localStorage.getItem('kd_api_key');
+    if(saved && saved.trim()) return saved.trim();
+  } catch(e){}
+  return API_KEY;
+}
 
 /* 本地人设回复库：演示版用规则匹配，真实版接大模型 API */
 const reply = {
@@ -309,10 +339,54 @@ function addMsg(text, who){
   d.textContent = text;
   msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
 }
-function aiReply(text){
+function localReplyText(text){
   const cat = classify(text);
   const pool = reply[role][cat] || reply[role].fallback;
-  setTimeout(()=> addMsg(pick(pool),'ai'), 500);
+  return pick(pool);
+}
+function aiReply(text){
+  const key = getApiKey();
+  // 兜底路径：现有 classify + pick 本地句库，500ms 节奏不变
+  const localFallback = ()=> setTimeout(()=> addMsg(localReplyText(text),'ai'), 500);
+
+  // API_KEY 为空（本机未保存）→ 不发起联网请求，直接走本地句库
+  if(!key){ localFallback(); return; }
+
+  // 成功路径：fetch 直连 OpenAI 兼容 /chat/completions，AbortController 8 秒超时
+  const controller = new AbortController();
+  const timer = setTimeout(()=> controller.abort(), 8000);
+  fetch(`${API_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT[role] || '' },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.8,
+      max_tokens: 200
+    }),
+    signal: controller.signal
+  }).then(res=>{
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(data=>{
+    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if(typeof content === 'string' && content.trim()){
+      // 成功：模型回复（choices[0].message.content，trim）作为 AI 气泡发出
+      addMsg(content.trim(),'ai');
+      return;
+    }
+    // 返回解析失败 → 本地兜底
+    localFallback();
+  }).catch(()=>{
+    // 断网、超时、HTTP 错误、返回解析失败、CORS 等任何情况 → 静默落到本地句库
+    localFallback();
+  }).finally(()=> clearTimeout(timer));
 }
 function send(){
   const v = document.getElementById('input').value.trim();
@@ -328,6 +402,13 @@ document.getElementById('poke').onclick = ()=>{
 document.getElementById('input').addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 document.querySelectorAll('.quick span').forEach(s=>{
   s.onclick = ()=>{ document.getElementById('input').value=s.dataset.q; send(); };
+});
+
+/* 联网 key 本地保存（localStorage: kd_api_key），仅本机浏览器演示 */
+const apiKeyInput = document.getElementById('apiKeyInput');
+try { apiKeyInput.value = localStorage.getItem('kd_api_key') || ''; } catch(e){}
+apiKeyInput.addEventListener('input', ()=>{
+  try { localStorage.setItem('kd_api_key', apiKeyInput.value.trim()); } catch(e){}
 });
 
 /* 课表联动：8 时段 × 三个人设代表话术（语料来自文案库） */

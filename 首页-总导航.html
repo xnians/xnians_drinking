@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>咕咚校园 · 总导航台</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+  body { background:#EAF4FB; min-height:100vh; padding:36px 16px 28px; color:#3a6b8c; }
+  .wrap { max-width:960px; margin:0 auto; }
+
+  /* 顶部标题 */
+  .hero { text-align:center; margin-bottom:30px; }
+  .hero h1 { font-size:30px; color:#2b7bb8; letter-spacing:2px; }
+  .hero .sub { font-size:15px; color:#5a8aa8; margin-top:10px; line-height:1.7; }
+  .hero .sub b { color:#4AA8E0; }
+
+  /* 卡片网格 */
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:20px; }
+  @media (max-width:460px){ .grid { grid-template-columns:1fr; } }
+
+  .card {
+    background:#fff;
+    border-radius:22px;
+    padding:22px 22px 20px;
+    box-shadow:0 8px 24px rgba(74,168,224,.16);
+    border:1px solid #e3f0f9;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    transition:.18s;
+  }
+  .card.link-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(74,168,224,.24); }
+
+  .card-head { display:flex; align-items:center; gap:12px; }
+  .card-head .icon {
+    width:52px; height:52px; border-radius:16px; background:#DFF1FF;
+    display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;
+  }
+  .card-head .title { font-size:18px; font-weight:bold; color:#2b7bb8; line-height:1.4; }
+  .card-head .tag { font-size:12px; color:#7aa9c7; margin-top:3px; }
+
+  .card .desc { font-size:14px; line-height:1.7; color:#3a6b8c; }
+
+  .meta { background:#F4FBFF; border-radius:14px; padding:12px 14px; font-size:13px; line-height:1.8; }
+  .meta .row { display:flex; gap:8px; }
+  .meta .label { color:#4AA8E0; font-weight:bold; flex-shrink:0; min-width:64px; }
+  .meta .val { color:#3a6b8c; word-break:break-all; }
+  .meta code { background:#DFF1FF; color:#2b7bb8; border-radius:6px; padding:1px 6px; font-size:12.5px; }
+
+  /* 真跳转按钮 */
+  .go-btn {
+    display:block; text-align:center; text-decoration:none;
+    padding:14px; border-radius:18px;
+    background:linear-gradient(135deg,#5bb6ee,#3d95d6);
+    color:#fff; font-size:16px; font-weight:bold;
+    box-shadow:0 8px 18px rgba(61,149,214,.32);
+    transition:.15s;
+  }
+  .go-btn:active { transform:scale(.97); }
+
+  /* 诚实标注的步骤块（非按钮） */
+  .steps {
+    border:1px dashed #4AA8E0; background:#fff; border-radius:16px;
+    padding:12px 14px; font-size:13.5px; line-height:1.8; color:#3a6b8c;
+  }
+  .steps .note { font-size:12.5px; color:#7aa9c7; margin-top:6px; }
+  .steps ol { margin:0 0 0 18px; }
+
+  /* 辅助入口 */
+  .aux {
+    margin-top:26px; background:#DFF1FF; border-radius:18px; padding:16px 20px;
+    font-size:13.5px; line-height:1.9; text-align:center;
+  }
+  .aux a { color:#2b7bb8; text-decoration:underline; word-break:break-all; }
+  .aux .aux-title { font-weight:bold; color:#2b7bb8; margin-bottom:4px; }
+
+  /* 页脚 */
+  footer { text-align:center; margin-top:26px; font-size:13px; color:#7aa9c7; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>💧 咕咚校园 · 总导航台</h1>
+    <p class="sub">面向学生的校园喝水提醒：<b>电脑守自习、手机随身带</b>。<br>从本页进入下面各功能，按卡片说明选择你要用的工具。</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- 卡片1：手机小程序预览（可真跳转） -->
+    <div class="card link-card">
+      <div class="card-head">
+        <div class="icon">📱</div>
+        <div>
+          <div class="title">手机小程序预览（浏览器直接玩）</div>
+          <div class="tag">网页演示 · 无需安装</div>
+        </div>
+      </div>
+      <div class="desc">打卡 / AI 陪伴 / 圈子 / 课表四页演示，浏览器双击即可体验，无需安装微信开发者工具。</div>
+      <div class="meta">
+        <div class="row"><span class="label">运行方式</span><span class="val">浏览器双击打开</span></div>
+        <div class="row"><span class="label">入口文件</span><span class="val"><code>小程序原型/预览版-双击打开.html</code></span></div>
+      </div>
+      <a class="go-btn" href="小程序原型/预览版-双击打开.html">👉 打开小程序预览版</a>
+    </div>
+
+    <!-- 卡片2：桌面喝水提醒（诚实步骤） -->
+    <div class="card">
+      <div class="card-head">
+        <div class="icon">💧</div>
+        <div>
+          <div class="title">桌面喝水提醒（Windows 桌面程序）</div>
+          <div class="tag">托盘常驻 · 定时弹窗 · 糖分统计</div>
+        </div>
+      </div>
+      <div class="desc">托盘常驻后台，定时弹窗提醒喝水，记录杯数与饮料糖分；适合自习、办公时挂在电脑上。</div>
+      <div class="meta">
+        <div class="row"><span class="label">运行环境</span><span class="val">Windows + Python 3.8+（仅标准库）</span></div>
+        <div class="row"><span class="label">入口文件</span><span class="val"><code>喝水提醒/启动喝水提醒.vbs</code>（备选 <code>启动喝水提醒.bat</code>）</span></div>
+      </div>
+      <div class="steps">
+        <b>运行步骤（需在本机操作，浏览器无法拉起 .vbs）：</b>
+        <ol>
+          <li>进入 <code>喝水提醒/</code> 目录；</li>
+          <li>双击 <code>启动喝水提醒.vbs</code>；若不可用，改用同目录 <code>启动喝水提醒.bat</code>。</li>
+        </ol>
+        <div class="note">本页不提供点击启动按钮：桌面程序需在 Windows 本地双击运行，断网打开本页无法直接唤起。</div>
+      </div>
+    </div>
+
+    <!-- 卡片3：独立日程表工具（诚实步骤） -->
+    <div class="card">
+      <div class="card-head">
+        <div class="icon">🗓️</div>
+        <div>
+          <div class="title">独立日程表工具</div>
+          <div class="tag">截图识别 · 分区规则 · 打勾动画</div>
+        </div>
+      </div>
+      <div class="desc">截图识别转待办清单，按分区规则整理日程，完成项带打勾动画；是独立运行的日程工具。</div>
+      <div class="meta">
+        <div class="row"><span class="label">运行环境</span><span class="val">Python 3.8+（可选 Pillow）</span></div>
+        <div class="row"><span class="label">入口文件</span><span class="val"><code>日程表/启动日程表.vbs</code>（备选 <code>启动日程表.bat</code>）</span></div>
+      </div>
+      <div class="steps">
+        <b>运行步骤（需在本机操作，浏览器无法拉起 .vbs）：</b>
+        <ol>
+          <li>进入 <code>日程表/</code> 目录；</li>
+          <li>双击 <code>启动日程表.vbs</code>；若不可用，改用同目录 <code>启动日程表.bat</code>。</li>
+        </ol>
+        <div class="note">本页不提供点击启动按钮：该工具需在本机 Python 环境下双击运行，浏览器无法直接唤起。</div>
+      </div>
+    </div>
+
+    <!-- 卡片4：本地离线打卡版（诚实步骤） -->
+    <div class="card">
+      <div class="card-head">
+        <div class="icon">🖥️</div>
+        <div>
+          <div class="title">本地离线打卡版（答辩演示）</div>
+          <div class="tag">三个人设 · 打卡 · 定时提醒 · 断网可跑</div>
+        </div>
+      </div>
+      <div class="desc">三个人设 + 打卡 + 定时提醒，纯本地 tkinter 实现，断网也能跑，适合答辩现场演示。</div>
+      <div class="meta">
+        <div class="row"><span class="label">运行环境</span><span class="val">Windows + Python 3.8+（仅标准库）</span></div>
+        <div class="row"><span class="label">入口文件</span><span class="val"><code>本地Python版/启动本地版.vbs</code>（备选 <code>启动本地版.bat</code>）</span></div>
+      </div>
+      <div class="steps">
+        <b>运行步骤（需在本机操作，浏览器无法拉起 .vbs）：</b>
+        <ol>
+          <li>进入 <code>本地Python版/</code> 目录；</li>
+          <li>双击 <code>启动本地版.vbs</code>；若不可用，改用同目录 <code>启动本地版.bat</code>。</li>
+        </ol>
+        <div class="note">本页不提供点击启动按钮：桌面程序需在 Windows 本地双击运行，浏览器无法直接唤起。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 辅助入口 -->
+  <div class="aux">
+    <div class="aux-title">📎 辅助入口</div>
+    素材包目录：<a href="AIGC提醒素材包/">AIGC提醒素材包/</a>　·　答辩说明：<a href="咕咚校园-项目介绍与答辩说明.md">咕咚校园-项目介绍与答辩说明.md</a>
+  </div>
+
+  <footer>
+    本页是总入口：先打开本页，再按上面卡片进入各功能。
+  </footer>
+
+</div>
+</body>
+</html>

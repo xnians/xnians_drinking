@@ -1,4 +1,20 @@
-// pages/chat/chat.js —— AI 陪伴聊天（演示版本地规则回复，真实版接大模型 API）
+// pages/chat/chat.js —— AI 陪伴聊天（双路：联网走大模型；无 key / 失败 / 离线自动回退本地规则句库）
+
+/* ===== 联网大模型配置（在这里填你的 API key）=====
+ * 注意：这是演示直连写法，把 key 写在源码里不安全。
+ * 微信小程序正式版需要在小程序后台配置 request 合法域名，
+ * 并且应走后端代理转发请求，不要把 key 直接发给前端。 */
+const API_BASE_URL = 'https://api.deepseek.com'; // OpenAI 兼容接口地址，默认 DeepSeek，可换成其他兼容服务
+const API_KEY = ''; // 留空 = 不联网，直接走本地规则句库（在这里填你的 API key）
+const MODEL = 'deepseek-chat';
+
+// 三套人设 system prompt（按当前选中人设注入）
+const SYSTEM_PROMPT = {
+  xueba: '你是「学霸同桌」，理性靠谱的学习伙伴，从记忆效率、学习方法切入鼓励人。语气温和简短口语，结尾自然带一句喝水提醒；不要长篇大论。',
+  tucao: '你是「吐槽搭子」，嘴硬心软、毒舌但暖心、带点梗，简短口语，吐槽完要给台阶，自然催喝水；不要真的伤人。',
+  shuijing: '你是「软萌水精灵」，可爱撒娇、多用叠词和 emoji，软乎乎，简短口语，撒娇式催喝水。'
+};
+
 const reply = {
   xueba: {
     tired: ['累了就先停下来喝口水，把任务拆成小块，完成一块休息一下。','疲劳时硬撑效率很低，补水+短暂休息，比咬牙扛更划算。'],
@@ -41,6 +57,12 @@ function classify(text){
 }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
+// 本地兜底：classify 正则匹配 + reply[role] 句池随机 pick，返回一句本地规则回复
+function localReplyText(role, text){
+  const pool = reply[role][classify(text)] || reply[role].fallback;
+  return pick(pool);
+}
+
 Page({
   data: {
     role: 'xueba',
@@ -65,13 +87,61 @@ Page({
   send(){
     const v = this.data.input.trim();
     if(!v) return;
+    // 用户消息立刻上屏
     const msgs = this.data.messages.concat([{ id: Date.now(), from: 'me', text: v }]);
     this.setData({ messages: msgs, input: '', scrollId: 'msg' + (msgs.length - 1) });
     const role = this.data.role;
-    const pool = reply[role][classify(v)] || reply[role].fallback;
-    setTimeout(()=>{
-      const ai = this.data.messages.concat([{ id: Date.now(), from: 'ai', text: pick(pool) }]);
-      this.setData({ messages: ai, scrollId: 'msg' + (ai.length - 1) });
-    }, 500);
+
+    // 兜底路径：落到现有本地规则句库，保持约 500ms 的回复节奏
+    const localFallback = ()=>{
+      setTimeout(()=>{
+        const ai = this.data.messages.concat([{ id: Date.now(), from: 'ai', text: localReplyText(role, v) }]);
+        this.setData({ messages: ai, scrollId: 'msg' + (ai.length - 1) });
+      }, 500);
+    };
+
+    // API_KEY 为空 → 不发起联网请求，直接走本地句库
+    if(!API_KEY){ localFallback(); return; }
+
+    // 成功路径：wx.request 直连 OpenAI 兼容 /chat/completions，超时 8000ms
+    wx.request({
+      url: `${API_BASE_URL}/chat/completions`,
+      method: 'POST',
+      timeout: 8000,
+      header: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      data: {
+        model: MODEL,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT[role] || '' },
+          { role: 'user', content: v }
+        ],
+        temperature: 0.8,
+        max_tokens: 200
+      },
+      success: (res)=>{
+        try {
+          const content = res && res.data && res.data.choices && res.data.choices[0]
+            && res.data.choices[0].message && res.data.choices[0].message.content;
+          if(typeof content === 'string' && content.trim()){
+            // 成功：模型回复（choices[0].message.content，trim）作为 AI 气泡发出
+            const ai = this.data.messages.concat([{ id: Date.now(), from: 'ai', text: content.trim() }]);
+            this.setData({ messages: ai, scrollId: 'msg' + (ai.length - 1) });
+            return;
+          }
+          // 返回解析失败 → 本地兜底
+          localFallback();
+        } catch(e){
+          // 任何解析异常 → 静默落到本地句库，不抛错、不卡界面
+          localFallback();
+        }
+      },
+      fail: ()=>{
+        // 断网、超时、HTTP 错误、CORS 等任何情况 → 静默落到本地句库
+        localFallback();
+      }
+    });
   }
 });
